@@ -576,6 +576,8 @@ int main(int argc, char *argv[])
 	if (!input_bufer)
 	{
 		fprintf(stderr, "malloc failed to allocate %d.\n", MAX_INPUT_SIZE);
+		fclose(input_file);
+		fclose(output_file);
 		return 2;
 	}
 	size_t input_len = fread(input_bufer, 1, MAX_INPUT_SIZE, input_file);
@@ -583,6 +585,8 @@ int main(int argc, char *argv[])
 	{
 		fprintf(stderr, "input was longer than %d, aborting.\n", MAX_INPUT_SIZE);
 		free(input_bufer);
+		fclose(input_file);
+		fclose(output_file);
 		return 3;
 	}
 	fclose(input_file);
@@ -592,6 +596,7 @@ int main(int argc, char *argv[])
 	{
 		fprintf(stderr, "snappy_get_uncompressed_length failed.\n");
 		free(input_bufer);
+		fclose(output_file);
 		return 4;
 	}
 	
@@ -600,6 +605,7 @@ int main(int argc, char *argv[])
 	{
 		fprintf(stderr, "malloc failed to allocate %d.\n", (int)uncompressed_len);
 		free(input_bufer);
+		fclose(output_file);
 		return 2;
 	}
 	
@@ -609,6 +615,7 @@ int main(int argc, char *argv[])
 	{
 		fprintf(stderr, "snappy_decompress failed.\n");
 		free(output_buffer);
+		fclose(output_file);
 		return 5;
 	}
 	
