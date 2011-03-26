@@ -47,7 +47,7 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 
 enum {
   LITERAL = 0,
-  COPY_1_BYTE_OFFSET = 1,  // 3 bit length + 3 bits of offset in opcode
+  COPY_1_BYTE_OFFSET = 1,  /* 3 bit length + 3 bits of offset in opcode */
   COPY_2_BYTE_OFFSET = 2,
   COPY_4_BYTE_OFFSET = 3
 };
@@ -375,14 +375,14 @@ SD__RefillTag(struct SnappyDecompressor *this)
 		this->ip_limit = ip + n;
 	}
 
-	// Read the tag character
+	/* Read the tag character */
 	DCHECK_LT(ip, this->ip_limit);
 	const uint8_t c = *(const uint8_t*)ip;
 	const uint32_t entry = char_table[c];
 	const uint32_t needed = (entry >> 11) + 1; /* +1 byte for 'c' */
 	DCHECK_LE(needed, sizeof(this->scratch));
 
-	// Read more bytes from reader if needed
+	/* Read more bytes from reader if needed */
 	uint32_t nbuf = this->ip_limit - ip;
 	if (nbuf < needed) {
 		/* Stitch together bytes from ip and reader to form the word
