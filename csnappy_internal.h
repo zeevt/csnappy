@@ -53,9 +53,10 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 
 #ifdef DEBUG
 #ifdef __KERNEL__
-#define DCHECK(cond)	printk(KERN_DEBUG "assert failed @ %s:%i\n", __FILE__, __LINE__)
+#define DCHECK(cond)	if (!(cond)) printk(KERN_DEBUG "assert failed @ %s:%i\n", __FILE__, __LINE__)
 #else
-#define DCHECK(cond)	fprintf(stderr, "assert failed @ %s:%i\n", __FILE__, __LINE__)
+#include <stdio.h>
+#define DCHECK(cond)	if (!(cond)) fprintf(stderr, "assert failed @ %s:%i\n", __FILE__, __LINE__)
 #endif
 #else
 #define DCHECK(cond)
