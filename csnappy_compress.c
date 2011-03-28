@@ -48,42 +48,19 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 
 #ifdef HAVE_BUILTIN_CTZ
 
-static inline int Bits__Log2Floor(uint32_t n)
-{
-	return n == 0 ? -1 : 31 ^ __builtin_clz(n);
-}
-
-static inline int Bits__FindLSBSetNonZero(uint32_t n)
+static inline int FindLSBSetNonZero(uint32_t n)
 {
 	return __builtin_ctz(n);
 }
 
-static inline int Bits__FindLSBSetNonZero64(uint64_t n)
+static inline int FindLSBSetNonZero64(uint64_t n)
 {
 	return __builtin_ctzll(n);
 }
 
 #else /* Portable versions. */
 
-static inline int Bits__Log2Floor(uint32_t n)
-{
-	if (n == 0)
-		return -1;
-	int log = 0;
-	uint32_t value = n;
-	for (int i = 4; i >= 0; --i) {
-		int shift = (1 << i);
-		uint32_t x = value >> shift;
-		if (x != 0) {
-			value = x;
-			log += shift;
-		}
-	}
-	assert(value == 1);
-	return log;
-}
-
-static inline int Bits__FindLSBSetNonZero(uint32_t n)
+static inline int FindLSBSetNonZero(uint32_t n)
 {
 	int rc = 31;
 	for (int i = 4, shift = 1 << 4; i >= 0; --i) {
@@ -97,15 +74,15 @@ static inline int Bits__FindLSBSetNonZero(uint32_t n)
 	return rc;
 }
 
-/* FindLSBSetNonZero64() is defined in terms of Bits__FindLSBSetNonZero(). */
-static inline int Bits__FindLSBSetNonZero64(uint64_t n)
+/* FindLSBSetNonZero64() is defined in terms of FindLSBSetNonZero(). */
+static inline int FindLSBSetNonZero64(uint64_t n)
 {
 	const uint32_t bottombits = (uint32_t)n;
 	if (bottombits == 0) {
 		/* Bottom bits are zero, so scan in top bits */
-		return 32 + Bits__FindLSBSetNonZero((uint32_t)(n >> 32));
+		return 32 + FindLSBSetNonZero((uint32_t)(n >> 32));
 	} else {
-		return Bits__FindLSBSetNonZero(bottombits);
+		return FindLSBSetNonZero(bottombits);
 	}
 }
 
@@ -240,7 +217,7 @@ FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 			 * and we expect AMD's bsf instruction to improve.
 			 */
 			uint64_t x = UNALIGNED_LOAD64(s2) ^ UNALIGNED_LOAD64(s1 + matched);
-			int matching_bits = Bits__FindLSBSetNonZero64(x);
+			int matching_bits = FindLSBSetNonZero64(x);
 			matched += matching_bits >> 3;
 			return matched;
 		}
@@ -271,7 +248,7 @@ FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 #ifdef __LITTLE_ENDIAN
 	if (s2 <= s2_limit - 4) {
 		uint32_t x = UNALIGNED_LOAD32(s2) ^ UNALIGNED_LOAD32(s1 + matched);
-		int matching_bits = Bits__FindLSBSetNonZero(x);
+		int matching_bits = FindLSBSetNonZero(x);
 		matched += matching_bits >> 3;
 	} else {
 #else
@@ -370,58 +347,6 @@ EmitCopy(char* op, int offset, int len)
 }
 
 
-#define kMaxHashTableBits 14
-#define kMaxHashTableSize (1 << kMaxHashTableBits)
-struct WorkingMemory {
-	uint16_t small_table[1<<10];    /* 2KB */
-	uint16_t *large_table;          /* Allocated only when needed */
-};
-
-static inline void
-WM__init(struct WorkingMemory *this)
-{
-	this->large_table = NULL;
-}
-
-static inline void
-WM__destroy(struct WorkingMemory *this)
-{
-	free(this->large_table);
-}
-
-static inline uint16_t*
-WM__GetHashTable(struct WorkingMemory *this, size_t input_size, int *table_size)
-{
-	/*
-	Use smaller hash table when input.size() is smaller, since we
-	fill the table, incurring O(hash table size) overhead for
-	compression, and if the input is short, we won't need that
-	many hash table entries anyway.
-	*/
-	assert(kMaxHashTableSize >= 256);
-	int htsize = 256;
-	while ((htsize < kMaxHashTableSize) && (htsize < input_size)) {
-		htsize <<= 1;
-	}
-	assert(0 == (htsize & (htsize - 1)));
-	assert(htsize <= kMaxHashTableSize);
-
-	uint16_t *table;
-	if (htsize <= ARRAYSIZE(this->small_table)) {
-		table = this->small_table;
-	} else {
-		if (this->large_table == NULL) {
-			this->large_table = malloc(2*kMaxHashTableSize);
-		}
-		table = this->large_table;
-	}
-
-	*table_size = htsize;
-	memset(table, 0, htsize * sizeof(*table));
-	return table;
-}
-
-
 /*
  * For 0 <= offset <= 4, GetUint32AtOffset(UNALIGNED_LOAD64(p), offset) will
  * equal UNALIGNED_LOAD32(p + offset).  Motivation: On x86-64 hardware we have
@@ -447,25 +372,28 @@ GetUint32AtOffset(uint64_t v, int offset)
  * REQUIRES: "input" is at most "kBlockSize" bytes long.
  * REQUIRES: "op" points to an array of memory that is at least
  * "snappy_max_compressed_length(input.size())" in size.
- * REQUIRES: All elements in "table[0..table_size-1]" are initialized to zero.
- * REQUIRES: "table_size" is a power of two
+ * REQUORES: working_memory points to a region of (2^workmem_bytes_power_of_two)
+ * bytes, all set to zero before snappy_compress_fragment is called.
+ * REQUORES: 9 <= workmem_bytes_power_of_two <= 15.
  *
  * Returns an "end" pointer into "op" buffer.
  * "end - op" is the compressed size of "input".
  */
 static inline char*
-CompressFragment(const char const *input,
-		 const size_t input_size,
-		 char *op,
-		 uint16_t *table,
-		 const int table_size)
+snappy_compress_fragment(
+	const char const *input,
+	const size_t input_size,
+	char *op,
+	void *working_memory,
+	const int workmem_bytes_power_of_two)
 {
+	DCHECK(9 <= workmem_bytes_power_of_two && workmem_bytes_power_of_two <= 15);
+	/* Table of 2^X bytes. Need only X-1 bits of 32bit key to address uint16_t. */
+	const int shift = 33 - workmem_bytes_power_of_two;
+	uint16_t *table = (uint16_t*)working_memory;
 	/* "ip" is the input pointer, and "op" is the output pointer. */
 	const char* ip = input;
 	assert(input_size <= kBlockSize);
-	assert((table_size & (table_size - 1)) == 0);
-	const int shift = 32 - Bits__Log2Floor(table_size);
-	DCHECK_EQ(UINT32_MAX >> shift, table_size - 1);
 	const char* ip_end = input + input_size;
 	const char* base_ip = ip;
 	/* Bytes in [next_emit, ip) will be emitted as literal bytes. Or
@@ -585,6 +513,7 @@ CompressFragment(const char const *input,
 
 	return op;
 }
+EXPORT_SYMBOL(snappy_compress_fragment);
 
 /*
  * Returns the maximal size of the compressed representation of
@@ -609,25 +538,46 @@ static inline size_t MIN_sizet(size_t a, size_t b)
 	else return a;
 }
 
-static inline size_t
-Compress(struct ByteArraySource *reader, struct UncheckedByteArraySink *writer)
+/*
+ * REQUIRES: "compressed" must point to an area of memory that is at
+ * least "snappy_max_compressed_length(input_length)" bytes in length.
+ * REQUORES: working_memory points to a region of (2^workmem_bytes_power_of_two)
+ * bytes.
+ * REQUORES: 9 <= workmem_bytes_power_of_two <= 15.
+ *
+ * Takes the data stored in "input[0..input_length]" and stores
+ * it in the array pointed to by "compressed".
+ *
+ * "*compressed_length" is set to the length of the compressed output.
+ */
+void
+snappy_compress(
+	const char *input,
+	size_t input_length,
+	char *compressed,
+	size_t *compressed_length,
+	void *working_memory,
+	const int workmem_bytes_power_of_two)
 {
+	struct ByteArraySource reader;
+	struct UncheckedByteArraySink writer;
+	BAS__init(&reader, input, input_length);
+	UBAS__init(&writer, compressed);
+
 	size_t written = 0;
-	int N = BAS__Available(reader);
+	int N = BAS__Available(&reader);
 	char ulength[Varint__kMax32];
 	char *p = Varint__Encode32(ulength, N);
-	UBAS__Append(writer, ulength, p - ulength);
+	UBAS__Append(&writer, ulength, p - ulength);
 	written += (p - ulength);
 
-	struct WorkingMemory wmem;
-	WM__init(&wmem);
 	char *scratch = NULL;
 	char *scratch_output = NULL;
 
 	while (N > 0) {
 		/* Get next block to compress (without copying if possible) */
 		size_t fragment_size;
-		const char *fragment = BAS__Peek(reader, &fragment_size);
+		const char *fragment = BAS__Peek(&reader, &fragment_size);
 		DCHECK_NE(fragment_size, 0);
 		const int num_to_read = MIN_int(N, kBlockSize);
 		size_t bytes_read = fragment_size;
@@ -638,31 +588,27 @@ Compress(struct ByteArraySource *reader, struct UncheckedByteArraySink *writer)
 			pending_advance = num_to_read;
 			fragment_size = num_to_read;
 		} else {
-			/* Read into scratch buffer
+			/* Read into scratch buffer.
 			 * If this is the last iteration, we want to allocate N bytes
 			 * of space, otherwise the max possible kBlockSize space.
 			 * num_to_read contains exactly the correct value */
 			if (scratch == NULL)
 				scratch = malloc(num_to_read);
 			memcpy(scratch, fragment, bytes_read);
-			BAS__Skip(reader, bytes_read);
+			BAS__Skip(&reader, bytes_read);
 
 			while (bytes_read < num_to_read) {
-				fragment = BAS__Peek(reader, &fragment_size);
+				fragment = BAS__Peek(&reader, &fragment_size);
 				size_t n = MIN_sizet(fragment_size, num_to_read - bytes_read);
 				memcpy(scratch + bytes_read, fragment, n);
 				bytes_read += n;
-				BAS__Skip(reader, n);
+				BAS__Skip(&reader, n);
 			}
 			DCHECK_EQ(bytes_read, num_to_read);
 			fragment = scratch;
 			fragment_size = num_to_read;
 		}
 		DCHECK_EQ(fragment_size, num_to_read);
-
-		/* Get encoding table for compression */
-		int table_size;
-		uint16_t* table = WM__GetHashTable(&wmem, num_to_read, &table_size);
 
 		/* Compress input_fragment and append to dest */
 		const int max_output = snappy_max_compressed_length(num_to_read);
@@ -674,45 +620,21 @@ Compress(struct ByteArraySource *reader, struct UncheckedByteArraySink *writer)
 		 * scratch_output[] region is big enough for this iteration. */
 		if (scratch_output == NULL)
 			scratch_output = malloc(max_output);
-		char *dest = UBAS__GetAppendBuffer(writer, max_output, scratch_output);
-		char *end = CompressFragment(fragment, fragment_size,
-					     dest, table, table_size);
-		UBAS__Append(writer, dest, end - dest);
+		char *dest = UBAS__GetAppendBuffer(&writer, max_output, scratch_output);
+		memset(working_memory, 0, 1 << workmem_bytes_power_of_two);
+		char *end = snappy_compress_fragment(
+				fragment, fragment_size, dest,
+				working_memory, workmem_bytes_power_of_two);
+		UBAS__Append(&writer, dest, end - dest);
 		written += (end - dest);
 
 		N -= num_to_read;
-		BAS__Skip(reader, pending_advance);
+		BAS__Skip(&reader, pending_advance);
 	}
 
 	free(scratch);
 	free(scratch_output);
-	WM__destroy(&wmem);
-
-	return written;
-}
-
-
-/*
- * REQUIRES: "compressed" must point to an area of memory that is at
- * least "snappy_max_compressed_length(input_length)" bytes in length.
- *
- * Takes the data stored in "input[0..input_length]" and stores
- * it in the array pointed to by "compressed".
- *
- * "*compressed_length" is set to the length of the compressed output.
- */
-void
-snappy_compress(const char *input,
-		size_t input_length,
-		char *compressed,
-		size_t *compressed_length)
-{
-  struct ByteArraySource reader;
-  struct UncheckedByteArraySink writer;
-  BAS__init(&reader, input, input_length);
-  UBAS__init(&writer, compressed);
-  
-  *compressed_length = Compress(&reader, &writer);
+	*compressed_length = written;
 }
 EXPORT_SYMBOL(snappy_compress);
 
@@ -758,18 +680,28 @@ int main(int argc, char *argv[])
 	fclose(input_file);
 
 	size_t max_compressed_len = snappy_max_compressed_length(input_len);
-
-	char* output_buffer = (char *)malloc(max_compressed_len);
+	char *output_buffer = (char*)malloc(max_compressed_len);
 	if (!output_buffer)
 	{
-		fprintf(stderr, "malloc failed to allocate %d.\n", (int)max_compressed_len);
+		fprintf(stderr, "malloc failed to allocate %d bytes.\n", (int)max_compressed_len);
+		free(input_bufer);
+		fclose(output_file);
+		return 2;
+	}
+#define SNAPPY_WORKMEM_BYTES_POWER_OF_TWO 15
+#define SNAPPY_WORKMEM_BYTES (1 << SNAPPY_WORKMEM_BYTES_POWER_OF_TWO)
+	void *working_memory = malloc(SNAPPY_WORKMEM_BYTES);
+	if (!working_memory)
+	{
+		fprintf(stderr, "malloc failed to allocate %d bytes.\n", SNAPPY_WORKMEM_BYTES);
 		free(input_bufer);
 		fclose(output_file);
 		return 2;
 	}
 
 	size_t compressed_len;
-	snappy_compress(input_bufer, input_len, output_buffer, &compressed_len);
+	snappy_compress(input_bufer, input_len, output_buffer, &compressed_len,
+			working_memory, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
 	free(input_bufer);
 
 	fwrite(output_buffer, 1, compressed_len, output_file);

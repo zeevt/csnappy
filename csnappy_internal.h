@@ -51,13 +51,6 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #define FALSE 0
 #endif
 
-/* The size of an array, if known at compile-time.
- * Will give unexpected results if used on a pointer.
- * We undefine it first, since some compilers already have a definition. */
-#ifdef ARRAYSIZE
-#undef ARRAYSIZE
-#endif
-#define ARRAYSIZE(a) (sizeof(a) / sizeof(*(a)))
 
 /* Static prediction hints. */
 #ifdef __KERNEL__
