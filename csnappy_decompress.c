@@ -33,6 +33,7 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 */
 
 #include "csnappy_internal.h"
+#include "csnappy.h"
 
 #ifdef __KERNEL__
 #include <linux/kernel.h>
@@ -41,7 +42,6 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #else
 #include <stdlib.h>
 #include <string.h>
-#define EXPORT_SYMBOL(x)
 #endif
 
 
@@ -478,7 +478,9 @@ snappy_get_uncompressed_length(const char *start, size_t n, size_t *result)
 		return FALSE;
 	}
 }
+#if defined(__KERNEL__) && !defined(STATIC)
 EXPORT_SYMBOL(snappy_get_uncompressed_length);
+#endif
 
 int
 snappy_decompress(const char *src, size_t src_len, char *dst, size_t dst_len)
@@ -494,9 +496,8 @@ snappy_decompress(const char *src, size_t src_len, char *dst, size_t dst_len)
 	if (!SD__ReadUncompressedLength(&decompressor, &uncompressed_len))
 		goto error;
 	/* Protect against possible DoS attack */
-	if ((size_t)uncompressed_len > dst_len) {
+	if ((size_t)uncompressed_len > dst_len)
 		goto error;
-	}
 	SAW__SetExpectedLength(&writer, uncompressed_len);
 	/* Process the entire input */
 	while (SD__Step(&decompressor, &writer)) { }
@@ -507,7 +508,12 @@ error:
 	SD__destroy(&decompressor);
 	return FALSE;
 }
+#if defined(__KERNEL__) && !defined(STATIC)
 EXPORT_SYMBOL(snappy_decompress);
+
+MODULE_LICENSE("BSD");
+MODULE_DESCRIPTION("Snappy Decompressor");
+#endif
 
 #ifdef TEST
 #define MAX_INPUT_SIZE 10 * 1024 * 1024

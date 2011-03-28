@@ -33,6 +33,7 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 */
 
 #include "csnappy_internal.h"
+#include "csnappy.h"
 
 #ifdef __KERNEL__
 #include <linux/kernel.h>
@@ -42,7 +43,6 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#define EXPORT_SYMBOL(x)
 #endif
 
 
@@ -365,21 +365,7 @@ GetUint32AtOffset(uint64_t v, int offset)
 #endif
 }
 
-/*
- * Flat array compression that does not emit the "uncompressed length"
- * prefix. Compresses "input" string to the "*op" buffer.
- *
- * REQUIRES: "input" is at most "kBlockSize" bytes long.
- * REQUIRES: "op" points to an array of memory that is at least
- * "snappy_max_compressed_length(input.size())" in size.
- * REQUORES: working_memory points to a region of (2^workmem_bytes_power_of_two)
- * bytes, all set to zero before snappy_compress_fragment is called.
- * REQUORES: 9 <= workmem_bytes_power_of_two <= 15.
- *
- * Returns an "end" pointer into "op" buffer.
- * "end - op" is the compressed size of "input".
- */
-static inline char*
+char*
 snappy_compress_fragment(
 	const char const *input,
 	const size_t input_size,
@@ -513,18 +499,18 @@ snappy_compress_fragment(
 
 	return op;
 }
+#if defined(__KERNEL__) && !defined(STATIC)
 EXPORT_SYMBOL(snappy_compress_fragment);
+#endif
 
-/*
- * Returns the maximal size of the compressed representation of
- * input data that is "source_len" bytes in length;
- */
 size_t
 snappy_max_compressed_length(size_t source_len)
 {
 	return 32 + source_len + source_len/6;
 }
+#if defined(__KERNEL__) && !defined(STATIC)
 EXPORT_SYMBOL(snappy_max_compressed_length);
+#endif
 
 
 static inline int MIN_int(int a, int b)
@@ -538,18 +524,6 @@ static inline size_t MIN_sizet(size_t a, size_t b)
 	else return a;
 }
 
-/*
- * REQUIRES: "compressed" must point to an area of memory that is at
- * least "snappy_max_compressed_length(input_length)" bytes in length.
- * REQUORES: working_memory points to a region of (2^workmem_bytes_power_of_two)
- * bytes.
- * REQUORES: 9 <= workmem_bytes_power_of_two <= 15.
- *
- * Takes the data stored in "input[0..input_length]" and stores
- * it in the array pointed to by "compressed".
- *
- * "*compressed_length" is set to the length of the compressed output.
- */
 void
 snappy_compress(
 	const char *input,
@@ -636,7 +610,12 @@ snappy_compress(
 	free(scratch_output);
 	*compressed_length = written;
 }
+#if defined(__KERNEL__) && !defined(STATIC)
 EXPORT_SYMBOL(snappy_compress);
+
+MODULE_LICENSE("BSD");
+MODULE_DESCRIPTION("Snappy Compressor");
+#endif
 
 #ifdef TEST
 #define MAX_INPUT_SIZE 10 * 1024 * 1024
@@ -688,8 +667,6 @@ int main(int argc, char *argv[])
 		fclose(output_file);
 		return 2;
 	}
-#define SNAPPY_WORKMEM_BYTES_POWER_OF_TWO 15
-#define SNAPPY_WORKMEM_BYTES (1 << SNAPPY_WORKMEM_BYTES_POWER_OF_TWO)
 	void *working_memory = malloc(SNAPPY_WORKMEM_BYTES);
 	if (!working_memory)
 	{
@@ -703,6 +680,7 @@ int main(int argc, char *argv[])
 	snappy_compress(input_bufer, input_len, output_buffer, &compressed_len,
 			working_memory, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
 	free(input_bufer);
+	free(working_memory);
 
 	fwrite(output_buffer, 1, compressed_len, output_file);
 	fclose(output_file);
