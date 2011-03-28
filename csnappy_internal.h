@@ -39,8 +39,8 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #ifdef __KERNEL__
 #include <linux/stddef.h>
 #include <linux/types.h>
-#include <asm/byteorder.h>
 #else
+#include <stddef.h>
 #include <stdint.h>
 #endif
 
@@ -51,17 +51,36 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #define FALSE 0
 #endif
 
+/* The size of an array, if known at compile-time.
+ * Will give unexpected results if used on a pointer.
+ * We undefine it first, since some compilers already have a definition. */
+#ifdef ARRAYSIZE
+#undef ARRAYSIZE
+#endif
+#define ARRAYSIZE(a) (sizeof(a) / sizeof(*(a)))
+
+/* Static prediction hints. */
+#ifdef __KERNEL__
+#include <linux/compiler.h>
+#else
+#define likely(x)      __builtin_expect(!!(x), 1)
+#define unlikely(x)    __builtin_expect(!!(x), 0)
+#endif
+
+
 #ifdef DEBUG
 #ifdef __KERNEL__
 #define DCHECK(cond)	if (!(cond)) printk(KERN_DEBUG "assert failed @ %s:%i\n", __FILE__, __LINE__)
 #else
-#include <stdio.h>
-#define DCHECK(cond)	if (!(cond)) fprintf(stderr, "assert failed @ %s:%i\n", __FILE__, __LINE__)
+#include <assert.h>
+#define DCHECK(cond)	assert(cond)
 #endif
 #else
 #define DCHECK(cond)
 #endif
+
 #define DCHECK_EQ(a, b)	DCHECK(((a) == (b)))
+#define DCHECK_NE(a, b)	DCHECK(((a) != (b)))
 #define DCHECK_GT(a, b)	DCHECK(((a) >  (b)))
 #define DCHECK_GE(a, b)	DCHECK(((a) >= (b)))
 #define DCHECK_LT(a, b)	DCHECK(((a) <  (b)))
@@ -69,11 +88,12 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 
 
 /* Convert to little-endian storage, opposite of network format. */
-
-#ifdef WORDS_BIGENDIAN
+#ifdef __KERNEL__
+#include <asm/byteorder.h>
+#else
+#if defined(WORDS_BIGENDIAN)
 
 /* The following guarantees declaration of the byte swap functions. */
-#ifndef __KERNEL__
 #ifdef _MSC_VER
 #include <stdlib.h>
 #define bswap_16(x) _byteswap_ushort(x)
@@ -88,22 +108,22 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #else
 #include <byteswap.h>
 #endif
-#endif /* !defined(__KERNEL__) */
 
-static inline uint32_t cpu_to_le32(uint32_t v)
-{
-	return bswap_32(v);
-}
-
-static inline uint32_t le32_to_cpu(uint32_t v)
-{
-	return bswap_32(v);
-}
+static inline uint16_t cpu_to_le16(uint32_t v) { return bswap_16(v); }
+static inline uint16_t le32_to_cpu(uint16_t v) { return bswap_16(v); }
+static inline uint32_t cpu_to_le32(uint32_t v) { return bswap_32(v); }
+static inline uint32_t le32_to_cpu(uint32_t v) { return bswap_32(v); }
 
 #else /* !defined(WORDS_BIGENDIAN) */
+#define cpu_to_le16(x) (x)
+#define le16_to_cpu(x) (x)
 #define cpu_to_le32(x) (x)
 #define le32_to_cpu(x) (x)
 #endif /* !defined(WORDS_BIGENDIAN) */
+#endif /* !defined(__KERNEL__) */
+#if !defined(__LITTLE_ENDIAN) && !defined(__BIG_ENDIAN)
+# error __LITTLE_ENDIAN or __BIG_ENDIAN has to be defined
+#endif
 
 
 /* Potentially unaligned loads and stores. */
@@ -119,7 +139,7 @@ static inline uint32_t le32_to_cpu(uint32_t v)
 #define UNALIGNED_STORE32(_p, _val)	put_unaligned((_val), (uint32_t*)(_p))
 #define UNALIGNED_STORE64(_p, _val)	put_unaligned((_val), (uint64_t*)(_p))
 
-#else /* __KERNEL__ */
+#else /* !defined(__KERNEL__) */
 
 #if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__)
 
@@ -131,7 +151,7 @@ static inline uint32_t le32_to_cpu(uint32_t v)
 #define UNALIGNED_STORE32(_p, _val) (*(uint32_t*)(_p) = (_val))
 #define UNALIGNED_STORE64(_p, _val) (*(uint64_t*)(_p) = (_val))
 
-#else /* x86 || powerpc */
+#else /* !(x86 || powerpc) */
 
 /* These functions are provided for architectures that don't support
    unaligned loads and stores. */
@@ -172,7 +192,49 @@ static inline void UNALIGNED_STORE64(void *p, uint64_t v)
   memcpy(p, &v, sizeof v);
 }
 
-#endif /* x86 || powerpc */
-#endif /* __KERNEL__ */
+#endif /* !(x86 || powerpc) */
+#endif /* !defined(__KERNEL__) */
+
+
+/* A Source implementation that yields the contents of a flat array */
+struct ByteArraySource {
+	const char* ptr;
+	size_t left;
+};
+
+static inline void
+BAS__init(struct ByteArraySource *this, const char *p, size_t n)
+{
+	this->ptr = p;
+	this->left = n;
+}
+
+static inline size_t
+BAS__Available(const struct ByteArraySource *this)
+{
+	return this->left;
+}
+
+static inline const char*
+BAS__Peek(struct ByteArraySource *this, size_t *len)
+{
+	*len = this->left;
+	return this->ptr;
+}
+
+static inline void
+BAS__Skip(struct ByteArraySource *this, size_t n)
+{
+	this->left -= n;
+	this->ptr += n;
+}
+
+
+enum {
+  LITERAL = 0,
+  COPY_1_BYTE_OFFSET = 1,  /* 3 bit length + 3 bits of offset in opcode */
+  COPY_2_BYTE_OFFSET = 2,
+  COPY_4_BYTE_OFFSET = 3
+};
 
 #endif  /* UTIL_SNAPPY_OPENSOURCE_SNAPPY_STUBS_INTERNAL_H_ */

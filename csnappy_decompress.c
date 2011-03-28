@@ -45,13 +45,6 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #endif
 
 
-enum {
-  LITERAL = 0,
-  COPY_1_BYTE_OFFSET = 1,  /* 3 bit length + 3 bits of offset in opcode */
-  COPY_2_BYTE_OFFSET = 2,
-  COPY_4_BYTE_OFFSET = 3
-};
-
 /* Mapping from i in range [0,4] to a mask to extract the bottom 8*i bits */
 static const uint32_t wordmask[] = {
   0u, 0xffu, 0xffffu, 0xffffffu, 0xffffffffu
@@ -106,8 +99,7 @@ static const uint16_t char_table[256] = {
 };
 
 
-static inline
-const char*
+static inline const char*
 varint_parse32(const char *p, const char *l, uint32_t *OUTPUT)
 {
 	const uint8_t *ptr = (const uint8_t*)p;
@@ -206,40 +198,6 @@ static inline void IncrementalCopyFastPath(const char *src, char *op, int len)
 		op += 8;
 		len -= 8;
 	}
-}
-
-
-/* A Source implementation that yields the contents of a flat array */
-struct ByteArraySource {
-	const char* ptr;
-	size_t left;
-};
-
-static inline void
-BAS__init(struct ByteArraySource *this, const char *p, size_t n)
-{
-	this->ptr = p;
-	this->left = n;
-}
-
-static inline size_t
-BAS__Available(const struct ByteArraySource *this)
-{
-	return this->left;
-}
-
-static inline const char*
-BAS__Peek(struct ByteArraySource *this, size_t *len)
-{
-	*len = this->left;
-	return this->ptr;
-}
-
-static inline void
-BAS__Skip(struct ByteArraySource *this, size_t n)
-{
-	this->left -= n;
-	this->ptr += n;
 }
 
 
