@@ -202,20 +202,20 @@ static inline uint32_t Hash(const char *p, int shift)
 #define kBlockLog 15
 #define kBlockSize (1 << kBlockLog)
 
-#define kMaxHashTableBits 14
-#define kMaxHashTableSize (1 << kMaxHashTableBits)
 
-// Return the largest n such that
-//
-//   s1[0,n-1] == s2[0,n-1]
-//   and n <= (s2_limit - s2).
-//
-// Does not read *s2_limit or beyond.
-// Does not read *(s1 + (s2_limit - s2)) or beyond.
-// Requires that s2_limit >= s2.
-//
-// Separate implementation for x86_64, for speed.  Uses the fact that
-// x86_64 is little endian.
+/*
+ * Return the largest n such that
+ *
+ *   s1[0,n-1] == s2[0,n-1]
+ *   and n <= (s2_limit - s2).
+ *
+ * Does not read *s2_limit or beyond.
+ * Does not read *(s1 + (s2_limit - s2)) or beyond.
+ * Requires that s2_limit >= s2.
+ *
+ * Separate implementation for x86_64, for speed.  Uses the fact that
+ * x86_64 is little endian.
+ */
 #if defined(__x86_64__)
 static inline int
 FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
@@ -370,6 +370,8 @@ EmitCopy(char* op, int offset, int len)
 }
 
 
+#define kMaxHashTableBits 14
+#define kMaxHashTableSize (1 << kMaxHashTableBits)
 struct WorkingMemory {
 	uint16_t small_table[1<<10];    /* 2KB */
 	uint16_t *large_table;          /* Allocated only when needed */
@@ -623,7 +625,7 @@ Compress(struct ByteArraySource *reader, struct UncheckedByteArraySink *writer)
 	char *scratch_output = NULL;
 
 	while (N > 0) {
-		// Get next block to compress (without copying if possible)
+		/* Get next block to compress (without copying if possible) */
 		size_t fragment_size;
 		const char *fragment = BAS__Peek(reader, &fragment_size);
 		DCHECK_NE(fragment_size, 0);
@@ -632,14 +634,14 @@ Compress(struct ByteArraySource *reader, struct UncheckedByteArraySink *writer)
 
 		int pending_advance = 0;
 		if (bytes_read >= num_to_read) {
-			// Buffer returned by reader is large enough
+			/* Buffer returned by reader is large enough */
 			pending_advance = num_to_read;
 			fragment_size = num_to_read;
 		} else {
-			// Read into scratch buffer
-			// If this is the last iteration, we want to allocate N bytes
-			// of space, otherwise the max possible kBlockSize space.
-			// num_to_read contains exactly the correct value
+			/* Read into scratch buffer
+			 * If this is the last iteration, we want to allocate N bytes
+			 * of space, otherwise the max possible kBlockSize space.
+			 * num_to_read contains exactly the correct value */
 			if (scratch == NULL)
 				scratch = malloc(num_to_read);
 			memcpy(scratch, fragment, bytes_read);
@@ -658,22 +660,20 @@ Compress(struct ByteArraySource *reader, struct UncheckedByteArraySink *writer)
 		}
 		DCHECK_EQ(fragment_size, num_to_read);
 
-		// Get encoding table for compression
+		/* Get encoding table for compression */
 		int table_size;
 		uint16_t* table = WM__GetHashTable(&wmem, num_to_read, &table_size);
 
-		// Compress input_fragment and append to dest
-		const int max_output = (int)snappy_max_compressed_length((size_t)num_to_read);
+		/* Compress input_fragment and append to dest */
+		const int max_output = snappy_max_compressed_length(num_to_read);
 
-		// Need a scratch buffer for the output, in case the byte sink doesn't
-		// have room for us directly.
-		if (scratch_output == NULL) {
+		/* Need a scratch buffer for the output, in case the byte sink doesn't
+		 * have room for us directly.
+		 * Since we encode kBlockSize regions followed by a region
+		 * which is <= kBlockSize in length, a previously allocated
+		 * scratch_output[] region is big enough for this iteration. */
+		if (scratch_output == NULL)
 			scratch_output = malloc(max_output);
-		} else {
-			// Since we encode kBlockSize regions followed by a region
-			// which is <= kBlockSize in length, a previously allocated
-			// scratch_output[] region is big enough for this iteration.
-		}
 		char *dest = UBAS__GetAppendBuffer(writer, max_output, scratch_output);
 		char *end = CompressFragment(fragment, fragment_size,
 					     dest, table, table_size);
@@ -770,6 +770,7 @@ int main(int argc, char *argv[])
 
 	size_t compressed_len;
 	snappy_compress(input_bufer, input_len, output_buffer, &compressed_len);
+	free(input_bufer);
 
 	fwrite(output_buffer, 1, compressed_len, output_file);
 	fclose(output_file);
