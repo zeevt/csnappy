@@ -503,7 +503,7 @@ snappy_compress_fragment(
 EXPORT_SYMBOL(snappy_compress_fragment);
 #endif
 
-size_t
+size_t __attribute__((const))
 snappy_max_compressed_length(size_t source_len)
 {
 	return 32 + source_len + source_len/6;
@@ -533,6 +533,7 @@ snappy_compress(
 	void *working_memory,
 	const int workmem_bytes_power_of_two)
 {
+	DCHECK(9 <= workmem_bytes_power_of_two && workmem_bytes_power_of_two <= 15);
 	struct ByteArraySource reader;
 	struct UncheckedByteArraySink writer;
 	BAS__init(&reader, input, input_length);
@@ -547,6 +548,7 @@ snappy_compress(
 
 	char *scratch = NULL;
 	char *scratch_output = NULL;
+	int max_output = snappy_max_compressed_length(kBlockSize);
 
 	while (N > 0) {
 		/* Get next block to compress (without copying if possible) */
@@ -557,7 +559,7 @@ snappy_compress(
 		size_t bytes_read = fragment_size;
 
 		int pending_advance = 0;
-		if (bytes_read >= num_to_read) {
+		if (likely(bytes_read >= num_to_read)) {
 			/* Buffer returned by reader is large enough */
 			pending_advance = num_to_read;
 			fragment_size = num_to_read;
@@ -584,8 +586,19 @@ snappy_compress(
 		}
 		DCHECK_EQ(fragment_size, num_to_read);
 
+		int workmem_size = workmem_bytes_power_of_two;
+		if (unlikely(fragment_size < kBlockSize)) {
+			for (workmem_size = 9;
+			     workmem_size < workmem_bytes_power_of_two;
+			     ++workmem_size) {
+				if ((1 << (workmem_size-1)) >= fragment_size)
+					break;
+			}
+			max_output = snappy_max_compressed_length(fragment_size);
+		}
+		memset(working_memory, 0, 1 << workmem_size);
+
 		/* Compress input_fragment and append to dest */
-		const int max_output = snappy_max_compressed_length(num_to_read);
 
 		/* Need a scratch buffer for the output, in case the byte sink doesn't
 		 * have room for us directly.
@@ -595,10 +608,9 @@ snappy_compress(
 		if (scratch_output == NULL)
 			scratch_output = malloc(max_output);
 		char *dest = UBAS__GetAppendBuffer(&writer, max_output, scratch_output);
-		memset(working_memory, 0, 1 << workmem_bytes_power_of_two);
 		char *end = snappy_compress_fragment(
 				fragment, fragment_size, dest,
-				working_memory, workmem_bytes_power_of_two);
+				working_memory, workmem_size);
 		UBAS__Append(&writer, dest, end - dest);
 		written += (end - dest);
 

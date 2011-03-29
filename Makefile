@@ -4,7 +4,7 @@ DBG_FLAGS = -ggdb -O0 -DDEBUG
 CFLAGS = -std=c99 -Wall -pedantic -D__LITTLE_ENDIAN -DHAVE_BUILTIN_CTZ
 LDFLAGS = -Wl,-O1
 
-all: test
+all: libcsnappy.so test
 
 csnappy_decompress: csnappy_decompress.c csnappy_internal.h csnappy.h
 	$(CC) $(CFLAGS) $(OPT_FLAGS) -DTEST -o $@ $<

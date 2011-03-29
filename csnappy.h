@@ -13,7 +13,7 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
  * input data that is "source_len" bytes in length;
  */
 size_t
-snappy_max_compressed_length(size_t source_len);
+snappy_max_compressed_length(size_t source_len) __attribute__((const));
 
 /*
  * Flat array compression that does not emit the "uncompressed length"
@@ -22,7 +22,7 @@ snappy_max_compressed_length(size_t source_len);
  * REQUIRES: "input" is at most "kBlockSize" bytes long.
  * REQUIRES: "op" points to an array of memory that is at least
  * "snappy_max_compressed_length(input.size())" in size.
- * REQUIRES: working_memory has (1 << workmem_bytes_power_of_two) bytes.
+ * REQUIRES: working_memory has (1 << workmem_bytes_power_of_two) NUL bytes.
  * REQUIRES: 9 <= workmem_bytes_power_of_two <= 15.
  *
  * Returns an "end" pointer into "op" buffer.
