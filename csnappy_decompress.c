@@ -33,13 +33,14 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 */
 
 #include "csnappy_internal.h"
-#include "csnappy.h"
 
 #ifdef __KERNEL__
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/module.h>
+#include "linux/csnappy.h"
 #else
+#include "csnappy.h"
 #include <stdlib.h>
 #include <string.h>
 #endif
