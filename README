@@ -1,0 +1,33 @@
+Google Snappy, available at http://code.google.com/p/snappy/
+is a compression library designed for speed rather than compression ratios.
+
+It is not a new concept by far. The Linux kernel currently uses LZO as the
+ default fast compressor. Snappy works faster, though achieves less compression.
+
+Snappy was written at Google some time in 2005 under the name Zippy and
+ eventually released as an open source project in 2011 under a new name and the
+ Apache 2 license. This license is incompatible with GPL v2 and after being
+ asked nicely by a representative of Mozilla Google have changed the license to
+ BSD.
+
+Google's code is written in C with a lot of C++. Some of the more interesting
+ features that rely on C++ appear to have been elided from the open source
+ version of Snappy.
+
+My stated goal is to get the codebase into a shape that can be accepted into the
+ mainline Linux kernel and used with zram (http://code.google.com/p/compcache/).
+Being able to compress vmlinux and initrd with Snappy is a secondary goal.
+Same for support in Squashfs and other parts of the kernel that currently
+ support LZO.
+
+To this end I cut out or port to plain ANSI C the neccessary code and headers.
+To cause less confusion, I call this project (and files) csnappy.
+The work is not yet complete.
+The API is not finalized.
+The code has never been tested in kernel-space.
+The code has never been tested by me on any architecture other than x86-64.
+The userspace testers are a hack, as is the shared library.
+
+Someone wrote a perl wrapper for csnappy:
+http://search.cpan.org/dist/Compress-Snappy/
+https://github.com/gray/compress-snappy
