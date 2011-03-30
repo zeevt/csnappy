@@ -189,40 +189,6 @@ static inline void UNALIGNED_STORE64(void *p, uint64_t v)
 #endif /* !defined(__KERNEL__) */
 
 
-/* A Source implementation that yields the contents of a flat array */
-struct ByteArraySource {
-	const char* ptr;
-	size_t left;
-};
-
-static inline void
-BAS__init(struct ByteArraySource *this, const char *p, size_t n)
-{
-	this->ptr = p;
-	this->left = n;
-}
-
-static inline size_t
-BAS__Available(const struct ByteArraySource *this)
-{
-	return this->left;
-}
-
-static inline const char*
-BAS__Peek(struct ByteArraySource *this, size_t *len)
-{
-	*len = this->left;
-	return this->ptr;
-}
-
-static inline void
-BAS__Skip(struct ByteArraySource *this, size_t n)
-{
-	this->left -= n;
-	this->ptr += n;
-}
-
-
 enum {
   LITERAL = 0,
   COPY_1_BYTE_OFFSET = 1,  /* 3 bit length + 3 bits of offset in opcode */

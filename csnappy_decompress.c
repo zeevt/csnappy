@@ -276,7 +276,8 @@ SAW__AppendFromSelf(struct SnappyArrayWriter *this,
 
 /* Helper class for decompression */
 struct SnappyDecompressor {
-	struct ByteArraySource	*reader;	/* Underlying source of bytes to decompress */
+	const char	*src;
+	size_t		src_bytes_left;
 	const char		*ip;		/* Points to next buffered byte */
 	const char		*ip_limit;	/* Points just past buffered bytes */
 	uint32_t		peeked;		/* Bytes peeked from reader (need to skip) */
@@ -285,9 +286,10 @@ struct SnappyDecompressor {
 };
 
 static inline void
-SD__init(struct SnappyDecompressor *this, struct ByteArraySource *reader)
+SD__init(struct SnappyDecompressor *this, const char *source, size_t src_len)
 {
-	this->reader = reader;
+	this->src = source;
+	this->src_bytes_left = src_len;
 	this->ip = NULL;
 	this->ip_limit = NULL;
 	this->peeked = 0;
@@ -298,7 +300,8 @@ static inline void
 SD__destroy(struct SnappyDecompressor *this)
 {
 	/* Advance past any bytes we peeked at from the reader */
-	BAS__Skip(this->reader, this->peeked);
+	this->src += this->peeked;
+	this->src_bytes_left -= this->peeked;
 }
 
 static inline uint32_t MIN_UINT32(uint32_t a, uint32_t b)
@@ -323,15 +326,15 @@ SD__RefillTag(struct SnappyDecompressor *this)
 	if (ip == this->ip_limit) {
 		/* Fetch a new fragment from the reader */
 		/* All peeked bytes are used up */
-		BAS__Skip(this->reader, this->peeked);
-		size_t n;
-		ip = BAS__Peek(this->reader, &n);
-		this->peeked = n;
-		if (n == 0) {
+		this->src += this->peeked;
+		this->src_bytes_left -= this->peeked;
+		ip = this->src;
+		this->peeked = this->src_bytes_left;
+		if (this->src_bytes_left == 0) {
 			this->eof = TRUE;
 			return FALSE;
 		}
-		this->ip_limit = ip + n;
+		this->ip_limit = ip + this->src_bytes_left;
 	}
 
 	/* Read the tag character */
@@ -350,16 +353,17 @@ SD__RefillTag(struct SnappyDecompressor *this)
 		   read more than we need. */
 		memmove(this->scratch, ip, nbuf);
 		/* All peeked bytes are used up */
-		BAS__Skip(this->reader, this->peeked);
+		this->src += this->peeked;
+		this->src_bytes_left -= this->peeked;
 		this->peeked = 0;
 		while (nbuf < needed) {
-			size_t length;
-			const char* src = BAS__Peek(this->reader, &length);
-			if (length == 0) return FALSE;
-			uint32_t to_add = MIN_UINT32(needed - nbuf, length);
-			memcpy(this->scratch + nbuf, src, to_add);
+			if (this->src_bytes_left == 0)
+				return FALSE;
+			uint32_t to_add = MIN_UINT32(needed - nbuf, this->src_bytes_left);
+			memcpy(this->scratch + nbuf, this->src, to_add);
 			nbuf += to_add;
-			BAS__Skip(this->reader, to_add);
+			this->src += to_add;
+			this->src_bytes_left -= to_add;
 		}
 		DCHECK_EQ(nbuf, needed);
 		this->ip = this->scratch;
@@ -368,7 +372,9 @@ SD__RefillTag(struct SnappyDecompressor *this)
 		/* Have enough bytes, but move into scratch_ so that we do not
 		   read past end of input */
 		memmove(this->scratch, ip, nbuf);
-		BAS__Skip(this->reader, this->peeked); /* All peeked bytes are used up */
+		/* All peeked bytes are used up */
+		this->src += this->peeked;
+		this->src_bytes_left -= this->peeked;
 		this->peeked = 0;
 		this->ip = this->scratch;
 		this->ip_limit = this->scratch + nbuf;
@@ -401,12 +407,11 @@ SD__ReadUncompressedLength(struct SnappyDecompressor *this, uint32_t *result)
 	for(;;) {
 		if (shift >= 32)
 			return FALSE;
-		size_t n;
-		const char* ip = BAS__Peek(this->reader, &n);
-		if (n == 0)
+		if (this->src_bytes_left == 0)
 			return FALSE;
-		const uint8_t c = *(const uint8_t*)ip;
-		BAS__Skip(this->reader, 1);
+		const uint8_t c = *(const uint8_t*)this->src;
+		this->src += 1;
+		this->src_bytes_left -= 1;
 		*result |= (uint32_t)(c & 0x7f) << shift;
 		if (c < 128)
 			break;
@@ -444,10 +449,10 @@ SD__Step(struct SnappyDecompressor *this, struct SnappyArrayWriter *writer)
 			if (!SAW__Append(writer, ip, avail, allow_fast_path))
 				return FALSE;
 			literal_length -= avail;
-			BAS__Skip(this->reader, this->peeked);
-			size_t n;
-			ip = BAS__Peek(this->reader, &n);
-			avail = n;
+			this->src += this->peeked;
+			this->src_bytes_left -= this->peeked;
+			ip = this->src;
+			avail = this->src_bytes_left;
 			this->peeked = avail;
 			if (avail == 0)
 				return FALSE; /* Premature end of input */
@@ -486,13 +491,11 @@ EXPORT_SYMBOL(snappy_get_uncompressed_length);
 int
 snappy_decompress(const char *src, size_t src_len, char *dst, size_t dst_len)
 {
-	struct ByteArraySource reader;
 	struct SnappyArrayWriter writer;
 	struct SnappyDecompressor decompressor;
-	BAS__init(&reader, src, src_len);
 	SAW__init(&writer, dst);
 	/* Read the uncompressed length from the front of the compressed input */
-	SD__init(&decompressor, &reader);
+	SD__init(&decompressor, src, src_len);
 	uint32_t uncompressed_len = 0;
 	if (!SD__ReadUncompressedLength(&decompressor, &uncompressed_len))
 		goto error;
