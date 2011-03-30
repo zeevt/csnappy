@@ -296,14 +296,6 @@ SD__init(struct SnappyDecompressor *this, const char *source, size_t src_len)
 	this->eof = FALSE;
 }
 
-static inline void
-SD__destroy(struct SnappyDecompressor *this)
-{
-	/* Advance past any bytes we peeked at from the reader */
-	this->src += this->peeked;
-	this->src_bytes_left -= this->peeked;
-}
-
 static inline uint32_t MIN_UINT32(uint32_t a, uint32_t b)
 {
 	if (a > b)
@@ -506,10 +498,8 @@ snappy_decompress(const char *src, size_t src_len, char *dst, size_t dst_len)
 	/* Process the entire input */
 	while (SD__Step(&decompressor, &writer)) { }
 	int status = (SD__eof(&decompressor) && SAW__CheckLength(&writer));
-	SD__destroy(&decompressor);
 	if (status) return TRUE; else return FALSE;
 error:
-	SD__destroy(&decompressor);
 	return FALSE;
 }
 #if defined(__KERNEL__) && !defined(STATIC)
