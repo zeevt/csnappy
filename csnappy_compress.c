@@ -46,7 +46,7 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #endif
 
 
-#ifdef HAVE_BUILTIN_CTZ
+#if defined(HAVE_BUILTIN_CTZ) || defined(__KERNEL__)
 
 static inline int FindLSBSetNonZero(uint32_t n)
 {
@@ -338,7 +338,7 @@ GetUint32AtOffset(uint64_t v, int offset)
 
 char*
 snappy_compress_fragment(
-	const char const *input,
+	const char *input,
 	const size_t input_size,
 	char *op,
 	void *working_memory,
