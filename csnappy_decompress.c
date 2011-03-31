@@ -176,25 +176,6 @@ struct SnappyArrayWriter {
 	char* op_limit;
 };
 
-static inline void
-SAW__init(struct SnappyArrayWriter *this, char *dst)
-{
-	this->base = dst;
-	this->op = dst;
-}
-
-static inline void
-SAW__SetExpectedLength(struct SnappyArrayWriter *this, uint32_t len)
-{
-	this->op_limit = this->op + len;
-}
-
-static inline int
-SAW__CheckLength(const struct SnappyArrayWriter *this)
-{
-	return this->op == this->op_limit;
-}
-
 static inline int
 SAW__Append(struct SnappyArrayWriter *this,
 	    const char* ip, uint32_t len, int allow_fast_path)
@@ -344,13 +325,6 @@ SD__RefillTag(struct SnappyDecompressor *this)
 	return TRUE;
 }
 
-/* Returns TRUE iff we have hit the end of the input without an error. */
-static inline int
-SD__eof(const struct SnappyDecompressor *this)
-{
-	return this->eof;
-}
-
 /*
  * Read the uncompressed length stored at the start of the compressed data.
  * On succcess, stores the length in *result and returns TRUE.
@@ -447,7 +421,7 @@ snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len
 {
 	struct SnappyArrayWriter writer;
 	struct SnappyDecompressor decomp;
-	SAW__init(&writer, dst);
+	writer.base = writer.op = dst;
 	/* Read the uncompressed length from the front of the compressed input */
 	SD__init(&decomp, src, src_len);
 	uint32_t olen = 0;
@@ -457,11 +431,14 @@ snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len
 	/* Protect against possible DoS attack */
 	if (unlikely(olen > dst_len))
 		return FALSE;
-	SAW__SetExpectedLength(&writer, olen);
+	writer.op_limit = writer.op + olen;
 	/* Process the entire input */
 	while (SD__Step(&decomp, &writer)) { }
-	ret = (SD__eof(&decomp) && SAW__CheckLength(&writer));
-	if (ret) return TRUE; else return FALSE;
+	if (decomp.eof != TRUE)
+		return FALSE;
+	if (writer.op != writer.op_limit)
+		return FALSE;
+	return TRUE;
 }
 #if defined(__KERNEL__) && !defined(STATIC)
 EXPORT_SYMBOL(snappy_decompress);
