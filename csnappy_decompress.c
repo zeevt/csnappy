@@ -99,39 +99,6 @@ static const uint16_t char_table[256] = {
   0x1801, 0x0f0a, 0x103f, 0x203f, 0x2001, 0x0f0b, 0x1040, 0x2040
 };
 
-
-static inline const char*
-varint_parse32(const char *p, const char *l, uint32_t *OUTPUT)
-{
-	const uint8_t *ptr = (const uint8_t*)p;
-	const uint8_t *limit = (const uint8_t*)l;
-	uint32_t b, result;
-	if (ptr >= limit) return NULL;
-	b = *(ptr++);
-	result = b & 127;
-	if (b < 128) goto done;
-	if (ptr >= limit) return NULL;
-	b = *(ptr++);
-	result |= (b & 127) << 7;
-	if (b < 128) goto done;
-	if (ptr >= limit) return NULL;
-	b = *(ptr++);
-	result |= (b & 127) << 14;
-	if (b < 128) goto done;
-	if (ptr >= limit) return NULL;
-	b = *(ptr++);
-	result |= (b & 127) << 21;
-	if (b < 128) goto done;
-	if (ptr >= limit) return NULL;
-	b = *(ptr++);
-	result |= (b & 127) << 28;
-	if (b < 16) goto done;
-	return NULL; /* Value is too long to be a varint32 */
-done:
-	*OUTPUT = result;
-	return (const char*)ptr;
-}
-
 /*
  * Copy "len" bytes from "src" to "op", one byte at a time.  Used for
  * handling COPY operations where the input and output regions may
@@ -217,7 +184,7 @@ SAW__init(struct SnappyArrayWriter *this, char *dst)
 }
 
 static inline void
-SAW__SetExpectedLength(struct SnappyArrayWriter *this, size_t len)
+SAW__SetExpectedLength(struct SnappyArrayWriter *this, uint32_t len)
 {
 	this->op_limit = this->op + len;
 }
@@ -277,16 +244,16 @@ SAW__AppendFromSelf(struct SnappyArrayWriter *this,
 /* Helper class for decompression */
 struct SnappyDecompressor {
 	const char	*src;
-	size_t		src_bytes_left;
-	const char		*ip;		/* Points to next buffered byte */
-	const char		*ip_limit;	/* Points just past buffered bytes */
-	uint32_t		peeked;		/* Bytes peeked from reader (need to skip) */
-	int			eof;		/* Hit end of input without an error? */
-	char			scratch[5];	/* Temporary buffer for PeekFast() boundaries */
+	uint32_t	src_bytes_left;
+	const char	*ip;		/* Points to next buffered byte */
+	const char	*ip_limit;	/* Points just past buffered bytes */
+	uint32_t	peeked;		/* Bytes peeked from reader (need to skip) */
+	int		eof;		/* Hit end of input without an error? */
+	char		scratch[5];	/* Temporary buffer for PeekFast() boundaries */
 };
 
 static inline void
-SD__init(struct SnappyDecompressor *this, const char *source, size_t src_len)
+SD__init(struct SnappyDecompressor *this, const char *source, uint32_t src_len)
 {
 	this->src = source;
 	this->src_bytes_left = src_len;
@@ -389,7 +356,7 @@ SD__eof(const struct SnappyDecompressor *this)
  * On succcess, stores the length in *result and returns TRUE.
  * On failure, returns FALSE.
  */
-static inline int
+static int __attribute__((noinline))
 SD__ReadUncompressedLength(struct SnappyDecompressor *this, uint32_t *result)
 {
 	DCHECK(this->ip == NULL); /* Must not have read anything yet */
@@ -465,42 +432,36 @@ SD__Step(struct SnappyDecompressor *this, struct SnappyArrayWriter *writer)
 
 
 int
-snappy_get_uncompressed_length(const char *start, size_t n, size_t *result)
+snappy_get_uncompressed_length(const char *start, uint32_t n, uint32_t *result)
 {
-	uint32_t v = 0;
-	const char *limit = start + n;
-	if (varint_parse32(start, limit, &v) != NULL) {
-		*result = v;
-		return TRUE;
-	} else {
-		return FALSE;
-	}
+	struct SnappyDecompressor decomp;
+	SD__init(&decomp, start, n);
+	return SD__ReadUncompressedLength(&decomp, result);
 }
 #if defined(__KERNEL__) && !defined(STATIC)
 EXPORT_SYMBOL(snappy_get_uncompressed_length);
 #endif
 
 int
-snappy_decompress(const char *src, size_t src_len, char *dst, size_t dst_len)
+snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len)
 {
 	struct SnappyArrayWriter writer;
-	struct SnappyDecompressor decompressor;
+	struct SnappyDecompressor decomp;
 	SAW__init(&writer, dst);
 	/* Read the uncompressed length from the front of the compressed input */
-	SD__init(&decompressor, src, src_len);
-	uint32_t uncompressed_len = 0;
-	if (!SD__ReadUncompressedLength(&decompressor, &uncompressed_len))
-		goto error;
+	SD__init(&decomp, src, src_len);
+	uint32_t olen = 0;
+	int ret = SD__ReadUncompressedLength(&decomp, &olen);
+	if (unlikely(ret != TRUE))
+		return ret;
 	/* Protect against possible DoS attack */
-	if ((size_t)uncompressed_len > dst_len)
-		goto error;
-	SAW__SetExpectedLength(&writer, uncompressed_len);
+	if (unlikely(olen > dst_len))
+		return FALSE;
+	SAW__SetExpectedLength(&writer, olen);
 	/* Process the entire input */
-	while (SD__Step(&decompressor, &writer)) { }
-	int status = (SD__eof(&decompressor) && SAW__CheckLength(&writer));
-	if (status) return TRUE; else return FALSE;
-error:
-	return FALSE;
+	while (SD__Step(&decomp, &writer)) { }
+	ret = (SD__eof(&decomp) && SAW__CheckLength(&writer));
+	if (ret) return TRUE; else return FALSE;
 }
 #if defined(__KERNEL__) && !defined(STATIC)
 EXPORT_SYMBOL(snappy_decompress);
@@ -538,7 +499,7 @@ int main(int argc, char *argv[])
 		fclose(output_file);
 		return 2;
 	}
-	size_t input_len = fread(input_bufer, 1, MAX_INPUT_SIZE, input_file);
+	uint32_t input_len = fread(input_bufer, 1, MAX_INPUT_SIZE, input_file);
 	if (!feof(input_file))
 	{
 		fprintf(stderr, "input was longer than %d, aborting.\n", MAX_INPUT_SIZE);
@@ -549,7 +510,7 @@ int main(int argc, char *argv[])
 	}
 	fclose(input_file);
 	
-	size_t uncompressed_len;
+	uint32_t uncompressed_len;
 	if (snappy_get_uncompressed_length(input_bufer, input_len, &uncompressed_len) == FALSE)
 	{
 		fprintf(stderr, "snappy_get_uncompressed_length failed.\n");

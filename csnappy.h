@@ -12,8 +12,8 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
  * Returns the maximal size of the compressed representation of
  * input data that is "source_len" bytes in length;
  */
-size_t
-snappy_max_compressed_length(size_t source_len) __attribute__((const));
+uint32_t
+snappy_max_compressed_length(uint32_t source_len) __attribute__((const));
 
 /*
  * Flat array compression that does not emit the "uncompressed length"
@@ -31,7 +31,7 @@ snappy_max_compressed_length(size_t source_len) __attribute__((const));
 char*
 snappy_compress_fragment(
 	const char* const input,
-	const size_t input_size,
+	const uint32_t input_size,
 	char *op,
 	void *working_memory,
 	const int workmem_bytes_power_of_two);
@@ -50,16 +50,16 @@ snappy_compress_fragment(
 void
 snappy_compress(
 	const char *input,
-	size_t input_length,
+	uint32_t input_length,
 	char *compressed,
-	size_t *compressed_length,
+	uint32_t *compressed_length,
 	void *working_memory,
 	const int workmem_bytes_power_of_two);
 
 int
-snappy_get_uncompressed_length(const char *start, size_t n, size_t *result);
+snappy_get_uncompressed_length(const char *start, uint32_t n, uint32_t *result);
 
 int
-snappy_decompress(const char *src, size_t src_len, char *dst, size_t dst_len);
+snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len);
 
 #endif
