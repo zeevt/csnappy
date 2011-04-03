@@ -56,8 +56,9 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #ifdef __KERNEL__
 #include <linux/compiler.h>
 #else
-#define likely(x)      __builtin_expect(!!(x), 1)
-#define unlikely(x)    __builtin_expect(!!(x), 0)
+#define likely(x)	__builtin_expect(!!(x), 1)
+#define unlikely(x)	__builtin_expect(!!(x), 0)
+#define noinline	__attribute__((noinline))
 #endif
 
 

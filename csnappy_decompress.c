@@ -328,7 +328,7 @@ SD__RefillTag(struct SnappyDecompressor *this)
  * On succcess, stores the length in *result and returns SNAPPY_E_OK.
  * On failure, returns SNAPPY_E_HEADER_BAD.
  */
-static int __attribute__((noinline))
+static noinline int
 SD__ReadUncompressedLength(struct SnappyDecompressor *this, uint32_t *result)
 {
 	DCHECK(this->ip == NULL); /* Must not have read anything yet */
