@@ -5,6 +5,8 @@ File modified for the Linux Kernel by
 Zeev Tarantov <zeev.tarantov@gmail.com>
 */
 
+#define CSNAPPY_VERSION	1
+
 #define SNAPPY_WORKMEM_BYTES_POWER_OF_TWO 15
 #define SNAPPY_WORKMEM_BYTES (1 << SNAPPY_WORKMEM_BYTES_POWER_OF_TWO)
 
