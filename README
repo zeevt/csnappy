@@ -20,7 +20,7 @@ Being able to compress vmlinux and initrd with Snappy is a secondary goal.
 Same for support in Squashfs and other parts of the kernel that currently
  support LZO.
 
-To this end I cut out or port to plain ANSI C the neccessary code and headers.
+To this end I cut out or port to plain ANSI C the necessary code and headers.
 To cause less confusion, I call this project (and files) csnappy.
 The work is not yet complete.
 The API is not finalized.
@@ -32,5 +32,5 @@ Someone wrote a perl wrapper for csnappy:
 http://search.cpan.org/dist/Compress-Snappy/
 https://github.com/gray/compress-snappy
 
-Patches to upstream snappy tester are coming soon.
-Patches to linux kernel are coming soon.
+Patch for upstream snappy tester is available.
+Patch for linux kernel (2.6.38.2) is available.
