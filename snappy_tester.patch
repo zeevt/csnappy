@@ -1,0 +1,129 @@
+diff --git a/trunk/configure.ac b/trunk/configure.ac
+index 692555d..c54f64f 100644
+--- a/trunk/configure.ac
++++ b/trunk/configure.ac
+@@ -84,6 +84,7 @@ AC_CHECK_LIB([lzo2], [lzo1x_1_15_compress],, [true])
+ AC_CHECK_LIB([lzf], [lzf_compress],, [true])
+ AC_CHECK_LIB([fastlz], [fastlz_compress],, [true])
+ AC_CHECK_LIB([quicklz], [qlz_compress],, [true])
++AC_CHECK_LIB([csnappy], [snappy_compress],, [true])
+ 
+ # These are used by snappy-stubs-public.h.in.
+ if test "$ac_cv_header_stdint_h" = "yes"; then
+diff --git a/trunk/snappy-test.h b/trunk/snappy-test.h
+index e99b884..68e0e96 100644
+--- a/trunk/snappy-test.h
++++ b/trunk/snappy-test.h
+@@ -112,6 +112,12 @@ extern "C" {
+ #include "quicklz.h"
+ #endif
+ 
++#ifdef HAVE_LIBCSNAPPY
++extern "C" {
++#include "csnappy.h"
++}
++#endif
++
+ namespace {
+ namespace File {
+   void Init() { }
+diff --git a/trunk/snappy_unittest.cc b/trunk/snappy_unittest.cc
+index b2de246..0c72099 100644
+--- a/trunk/snappy_unittest.cc
++++ b/trunk/snappy_unittest.cc
+@@ -57,6 +57,8 @@ DEFINE_bool(liblzf, false,
+             "(http://www.goof.com/pcg/marc/liblzf.html)");
+ DEFINE_bool(fastlz, false,
+             "Run FastLZ compression (http://www.fastlz.org/");
++DEFINE_bool(csnappy, false,
++	    "Run csnappy compression (https://github.com/zeevt/csnappy/)");
+ DEFINE_bool(snappy, true, "Run snappy compression");
+ 
+ 
+@@ -121,11 +123,11 @@ typedef string DataEndingAtUnreadablePage;
+ #endif
+ 
+ enum CompressorType {
+-  ZLIB, LZO, LIBLZF, QUICKLZ, FASTLZ, SNAPPY,
++  ZLIB, LZO, LIBLZF, QUICKLZ, FASTLZ, CSNAPPY, SNAPPY,
+ };
+ 
+ const char* names[] = {
+-  "ZLIB", "LZO", "LIBLZF", "QUICKLZ", "FASTLZ", "SNAPPY",
++  "ZLIB", "LZO", "LIBLZF", "QUICKLZ", "FASTLZ", "CSNAPPY", "SNAPPY",
+ };
+ 
+ static size_t MinimumRequiredOutputSpace(size_t input_size,
+@@ -156,6 +158,11 @@ static size_t MinimumRequiredOutputSpace(size_t input_size,
+       return max(static_cast<int>(ceil(input_size * 1.05)), 66);
+ #endif  // FASTLZ_VERSION
+ 
++#ifdef CSNAPPY_VERSION
++    case CSNAPPY:
++      return snappy_max_compressed_length(input_size);
++#endif // CSNAPPY_VERSION
++
+     case SNAPPY:
+       return snappy::MaxCompressedLength(input_size);
+ 
+@@ -266,6 +273,24 @@ static bool Compress(const char* input, size_t input_size, CompressorType comp,
+     }
+ #endif  // FASTLZ_VERSION
+ 
++#ifdef CSNAPPY_VERSION
++    case CSNAPPY: {
++      uint32_t destlen;
++      char* mem = new char[SNAPPY_WORKMEM_BYTES];
++      snappy_compress(input, input_size,
++                      string_as_array(compressed),
++                      &destlen,
++                      mem,
++                      SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
++      delete[] mem;
++      CHECK_LE(destlen, snappy_max_compressed_length(input_size));
++      if (!compressed_is_preallocated) {
++        compressed->resize(destlen);
++      }
++      break;
++    }
++#endif // CSNAPPY_VERSION
++
+     case SNAPPY: {
+       size_t destlen;
+       snappy::RawCompress(input, input_size,
+@@ -364,6 +389,18 @@ static bool Uncompress(const string& compressed, CompressorType comp,
+     }
+ #endif  // FASTLZ_VERSION
+ 
++#ifdef CSNAPPY_VERSION
++    case CSNAPPY: {
++      int ret = snappy_decompress(
++          compressed.data(),
++          compressed.size(),
++          string_as_array(output),
++          size);
++      CHECK_EQ(ret, SNAPPY_E_OK);
++      break;
++    }
++#endif // CSNAPPY_VERSION
++
+     case SNAPPY: {
+       snappy::RawUncompress(compressed.data(), compressed.size(),
+                             string_as_array(output));
+@@ -464,7 +501,7 @@ static void Measure(const char* data,
+   string urate = (uncomp_rate >= 0)
+                  ? StringPrintf("%.1f", uncomp_rate)
+                  : string("?");
+-  printf("%-7s [b %dM] bytes %6d -> %6d %4.1f%%  "
++  printf("%-8s [b %dM] bytes %6d -> %6d %4.1f%%  "
+          "comp %5.1f MB/s  uncomp %5s MB/s\n",
+          x.c_str(),
+          block_size/(1<<20),
+@@ -1011,6 +1048,7 @@ static void MeasureFile(const char* fname) {
+     if (FLAGS_liblzf)   Measure(input, len, LIBLZF, repeats, 1024<<10);
+     if (FLAGS_quicklz)  Measure(input, len, QUICKLZ, repeats, 1024<<10);
+     if (FLAGS_fastlz)   Measure(input, len, FASTLZ, repeats, 1024<<10);
++    if (FLAGS_csnappy)  Measure(input, len, CSNAPPY, repeats, 1024<<10);
+     if (FLAGS_snappy)    Measure(input, len, SNAPPY, repeats, 4096<<10);
+ 
+     // For block-size based measurements
