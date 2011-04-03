@@ -505,7 +505,7 @@ snappy_compress(
 	int workmem_size;
 	int num_to_read;
 	uint32_t written = 0;
-	char *p = Varint__Encode32(compressed, (uint32_t)input_length);
+	char *p = Varint__Encode32(compressed, input_length);
 	written += (p - compressed);
 	compressed = p;
 	while (input_length > 0) {
