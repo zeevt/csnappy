@@ -1,0 +1,7 @@
+* C90 warnings (declare variable at top of functions)
+* remove TRUE and FALSE
+* how come compress can't fail?
+* decompress_fragment for zram
+* link userspace testers against shared library, extract code to separate file
+* a bit better userspace makefile
+* run time choice of compression algo in zram
