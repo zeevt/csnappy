@@ -1,7 +1,7 @@
 
 OPT_FLAGS = -g -O2 -DNDEBUG
 DBG_FLAGS = -ggdb -O0 -DDEBUG
-CFLAGS = -std=c99 -Wall -pedantic -D__LITTLE_ENDIAN -DHAVE_BUILTIN_CTZ
+CFLAGS = -std=gnu89 -Wall -pedantic -D__LITTLE_ENDIAN -DHAVE_BUILTIN_CTZ
 LDFLAGS = -Wl,-O1
 
 all: libcsnappy.so test
