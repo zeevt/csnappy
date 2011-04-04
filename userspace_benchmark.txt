@@ -1,0 +1,72 @@
+testdata/alice29.txt                     :
+LZO:     [b 1M] bytes 152089 ->  82691 54.4%  comp  64.7 MB/s  uncomp 206.5 MB/s
+CSNAPPY: [b 1M] bytes 152089 ->  90965 59.8%  comp 173.5 MB/s  uncomp 374.7 MB/s
+SNAPPY:  [b 4M] bytes 152089 ->  90965 59.8%  comp 174.9 MB/s  uncomp 401.4 MB/s
+testdata/asyoulik.txt                    :
+LZO:     [b 1M] bytes 125179 ->  73217 58.5%  comp  59.6 MB/s  uncomp 201.6 MB/s
+CSNAPPY: [b 1M] bytes 125179 ->  80207 64.1%  comp 164.1 MB/s  uncomp 350.3 MB/s
+SNAPPY:  [b 4M] bytes 125179 ->  80207 64.1%  comp 164.5 MB/s  uncomp 376.2 MB/s
+testdata/cp.html                         :
+LZO:     [b 1M] bytes  24603 ->  11621 47.2%  comp  66.7 MB/s  uncomp 297.9 MB/s
+CSNAPPY: [b 1M] bytes  24603 ->  11838 48.1%  comp 228.9 MB/s  uncomp 505.8 MB/s
+SNAPPY:  [b 4M] bytes  24603 ->  11838 48.1%  comp 226.0 MB/s  uncomp 523.6 MB/s
+testdata/fields.c                        :
+LZO:     [b 1M] bytes  11150 ->   4663 41.8%  comp  85.8 MB/s  uncomp 301.3 MB/s
+CSNAPPY: [b 1M] bytes  11150 ->   4728 42.4%  comp 250.1 MB/s  uncomp 510.6 MB/s
+SNAPPY:  [b 4M] bytes  11150 ->   4728 42.4%  comp 246.8 MB/s  uncomp 532.4 MB/s
+testdata/geo.protodata                   :
+LZO:     [b 1M] bytes 100000 ->  20423 20.4%  comp 136.2 MB/s  uncomp 499.2 MB/s
+CSNAPPY: [b 1M] bytes 100000 ->  23488 23.5%  comp 414.5 MB/s  uncomp 757.3 MB/s
+SNAPPY:  [b 4M] bytes 100000 ->  23488 23.5%  comp 411.1 MB/s  uncomp 771.9 MB/s
+testdata/grammar.lsp                     :
+LZO:     [b 1M] bytes   3721 ->   1781 47.9%  comp  78.8 MB/s  uncomp 363.6 MB/s
+CSNAPPY: [b 1M] bytes   3721 ->   1800 48.4%  comp 256.2 MB/s  uncomp 543.5 MB/s
+SNAPPY:  [b 4M] bytes   3721 ->   1800 48.4%  comp 249.5 MB/s  uncomp 528.6 MB/s
+testdata/house.jpg                       :
+LZO:     [b 1M] bytes 126958 -> 127173 100.2%  comp  23.5 MB/s  uncomp 1654.2 MB/s
+CSNAPPY: [b 1M] bytes 126958 -> 126803 99.9%  comp 2385.9 MB/s  uncomp 8381.4 MB/s
+SNAPPY:  [b 4M] bytes 126958 -> 126803 99.9%  comp 2401.9 MB/s  uncomp 8243.9 MB/s
+testdata/html                            :
+LZO:     [b 1M] bytes 102400 ->  21027 20.5%  comp 135.7 MB/s  uncomp 490.8 MB/s
+CSNAPPY: [b 1M] bytes 102400 ->  24140 23.6%  comp 423.1 MB/s  uncomp 826.4 MB/s
+SNAPPY:  [b 4M] bytes 102400 ->  24140 23.6%  comp 408.4 MB/s  uncomp 848.0 MB/s
+testdata/html_x_4                        :
+LZO:     [b 1M] bytes 409600 ->  82980 20.3%  comp 143.3 MB/s  uncomp 485.7 MB/s
+CSNAPPY: [b 1M] bytes 409600 ->  96472 23.6%  comp 424.5 MB/s  uncomp 820.2 MB/s
+SNAPPY:  [b 4M] bytes 409600 ->  96472 23.6%  comp 420.2 MB/s  uncomp 844.5 MB/s
+testdata/kennedy.xls                     :
+LZO:     [b 1M] bytes 1029744 -> 357315 34.7%  comp 158.3 MB/s  uncomp 620.6 MB/s
+CSNAPPY: [b 1M] bytes 1029744 -> 425735 41.3%  comp 354.6 MB/s  uncomp 500.1 MB/s
+SNAPPY:  [b 4M] bytes 1029744 -> 425735 41.3%  comp 348.2 MB/s  uncomp 505.9 MB/s
+testdata/kppkn.gtb                       :
+LZO:     [b 1M] bytes 184320 ->  71671 38.9%  comp  98.8 MB/s  uncomp 275.4 MB/s
+CSNAPPY: [b 1M] bytes 184320 ->  70535 38.3%  comp 274.1 MB/s  uncomp 436.4 MB/s
+SNAPPY:  [b 4M] bytes 184320 ->  70535 38.3%  comp 276.1 MB/s  uncomp 453.5 MB/s
+testdata/lcet10.txt                      :
+LZO:     [b 1M] bytes 426754 -> 221290 51.9%  comp  67.6 MB/s  uncomp 212.2 MB/s
+CSNAPPY: [b 1M] bytes 426754 -> 243710 57.1%  comp 182.9 MB/s  uncomp 395.7 MB/s
+SNAPPY:  [b 4M] bytes 426754 -> 243710 57.1%  comp 183.6 MB/s  uncomp 423.3 MB/s
+testdata/mapreduce-osdi-1.pdf            :
+LZO:     [b 1M] bytes  94330 ->  76999 81.6%  comp  29.0 MB/s  uncomp 949.8 MB/s
+CSNAPPY: [b 1M] bytes  94330 ->  77477 82.1%  comp 843.1 MB/s  uncomp 2014.3 MB/s
+SNAPPY:  [b 4M] bytes  94330 ->  77477 82.1%  comp 832.3 MB/s  uncomp 2010.3 MB/s
+testdata/plrabn12.txt                    :
+LZO:     [b 1M] bytes 481861 -> 294610 61.1%  comp  59.3 MB/s  uncomp 192.5 MB/s
+CSNAPPY: [b 1M] bytes 481861 -> 329339 68.3%  comp 153.6 MB/s  uncomp 327.4 MB/s
+SNAPPY:  [b 4M] bytes 481861 -> 329339 68.3%  comp 154.3 MB/s  uncomp 351.9 MB/s
+testdata/ptt5                            :
+LZO:     [b 1M] bytes 513216 ->  86232 16.8%  comp 138.3 MB/s  uncomp 589.3 MB/s
+CSNAPPY: [b 1M] bytes 513216 ->  93455 18.2%  comp 550.3 MB/s  uncomp 782.4 MB/s
+SNAPPY:  [b 4M] bytes 513216 ->  93455 18.2%  comp 550.3 MB/s  uncomp 780.4 MB/s
+testdata/sum                             :
+LZO:     [b 1M] bytes  38240 ->  17686 46.2%  comp  66.8 MB/s  uncomp 310.2 MB/s
+CSNAPPY: [b 1M] bytes  38240 ->  19837 51.9%  comp 229.0 MB/s  uncomp 467.9 MB/s
+SNAPPY:  [b 4M] bytes  38240 ->  19837 51.9%  comp 227.2 MB/s  uncomp 474.8 MB/s
+testdata/urls.10K                        :
+LZO:     [b 1M] bytes 702087 -> 309320 44.1%  comp  64.4 MB/s  uncomp 308.7 MB/s
+CSNAPPY: [b 1M] bytes 702087 -> 357267 50.9%  comp 239.2 MB/s  uncomp 588.9 MB/s
+SNAPPY:  [b 4M] bytes 702087 -> 357267 50.9%  comp 238.3 MB/s  uncomp 595.6 MB/s
+testdata/xargs.1                         :
+LZO:     [b 1M] bytes   4227 ->   2450 58.0%  comp  65.2 MB/s  uncomp 331.1 MB/s
+CSNAPPY: [b 1M] bytes   4227 ->   2509 59.4%  comp 210.7 MB/s  uncomp 469.1 MB/s
+SNAPPY:  [b 4M] bytes   4227 ->   2509 59.4%  comp 205.0 MB/s  uncomp 490.4 MB/s
