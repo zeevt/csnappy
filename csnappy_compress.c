@@ -168,8 +168,10 @@ static inline uint32_t Hash(const char *p, int shift)
 static inline int
 FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 {
+	uint64_t x;
+	int matched, matching_bits;
 	DCHECK_GE(s2_limit, s2);
-	int matched = 0;
+	matched = 0;
 	/*
 	 * Find out how long the match is. We loop over the data 64 bits at a
 	 * time until we find a 64-bit block that doesn't match; then we find
@@ -187,8 +189,8 @@ FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 			 * However, what follows is ~10% better on Intel Core 2 and newer,
 			 * and we expect AMD's bsf instruction to improve.
 			 */
-			uint64_t x = UNALIGNED_LOAD64(s2) ^ UNALIGNED_LOAD64(s1 + matched);
-			int matching_bits = FindLSBSetNonZero64(x);
+			x = UNALIGNED_LOAD64(s2) ^ UNALIGNED_LOAD64(s1 + matched);
+			matching_bits = FindLSBSetNonZero64(x);
 			matched += matching_bits >> 3;
 			return matched;
 		}
@@ -336,6 +338,7 @@ GetUint32AtOffset(uint64_t v, int offset)
 #endif
 }
 
+#define kInputMarginBytes 15
 char*
 snappy_compress_fragment(
 	const char *input,
@@ -344,27 +347,31 @@ snappy_compress_fragment(
 	void *working_memory,
 	const int workmem_bytes_power_of_two)
 {
+	const char *ip, *ip_end, *base_ip, *next_emit, *ip_limit, *next_ip, *candidate, *base;
+	uint16_t *table = (uint16_t*)working_memory;
+	uint64_t input_bytes;
+	uint32_t hash, next_hash, prev_hash, cur_hash, skip, candidate_bytes;
+	int shift, matched;
+
 	DCHECK(9 <= workmem_bytes_power_of_two && workmem_bytes_power_of_two <= 15);
 	/* Table of 2^X bytes. Need only X-1 bits of 32bit key to address uint16_t. */
-	const int shift = 33 - workmem_bytes_power_of_two;
-	uint16_t *table = (uint16_t*)working_memory;
+	shift = 33 - workmem_bytes_power_of_two;
 	/* "ip" is the input pointer, and "op" is the output pointer. */
-	const char* ip = input;
+	ip = input;
 	DCHECK_LE(input_size, kBlockSize);
-	const char* ip_end = input + input_size;
-	const char* base_ip = ip;
+	ip_end = input + input_size;
+	base_ip = ip;
 	/* Bytes in [next_emit, ip) will be emitted as literal bytes. Or
 	   [next_emit, ip_end) after the main loop. */
-	const char* next_emit = ip;
+	next_emit = ip;
 
-	const int kInputMarginBytes = 15;
 	if (unlikely(input_size < kInputMarginBytes))
 		goto emit_remainder;
 
 	memset(working_memory, 0, 1 << workmem_bytes_power_of_two);
 
-	const char* ip_limit = input + input_size - kInputMarginBytes;
-	uint32_t next_hash = Hash(++ip, shift);
+	ip_limit = input + input_size - kInputMarginBytes;
+	next_hash = Hash(++ip, shift);
 
 	main_loop:
 	DCHECK_LT(next_emit, ip);
@@ -395,16 +402,14 @@ snappy_compress_fragment(
 	* last match; dividing it by 32 (ie. right-shifting by five) gives the
 	* number of bytes to move ahead for each iteration.
 	*/
-	uint32_t skip = 32;
+	skip = 32;
 
-	const char* next_ip = ip;
-	const char* candidate;
+	next_ip = ip;
 	do {
 		ip = next_ip;
-		uint32_t hash = next_hash;
+		hash = next_hash;
 		DCHECK_EQ(hash, Hash(ip, shift));
-		uint32_t bytes_between_hash_lookups = skip++ >> 5;
-		next_ip = ip + bytes_between_hash_lookups;
+		next_ip = ip + (skip++ >> 5);
 		if (unlikely(next_ip > ip_limit))
 			goto emit_remainder;
 		next_hash = Hash(next_ip, shift);
@@ -434,28 +439,26 @@ snappy_compress_fragment(
 	* by proceeding to the next iteration of the main loop. We also can exit
 	* this loop via goto if we get close to exhausting the input.
 	*/
-	uint64_t input_bytes = 0;
-	uint32_t candidate_bytes = 0;
+	input_bytes = 0;
+	candidate_bytes = 0;
 
 	do {
 		/* We have a 4-byte match at ip, and no need to emit any
 		 "literal bytes" prior to ip. */
-		const char* base = ip;
-		int matched = 4 + FindMatchLength(candidate + 4, ip + 4, ip_end);
+		base = ip;
+		matched = 4 + FindMatchLength(candidate + 4, ip + 4, ip_end);
 		ip += matched;
-		int offset = base - candidate;
 		DCHECK_EQ(0, memcmp(base, candidate, matched));
-		op = EmitCopy(op, offset, matched);
+		op = EmitCopy(op, base - candidate, matched);
 		/* We could immediately start working at ip now, but to improve
 		 compression we first update table[Hash(ip - 1, ...)]. */
-		const char* insert_tail = ip - 1;
 		next_emit = ip;
 		if (unlikely(ip >= ip_limit))
 			goto emit_remainder;
-		input_bytes = UNALIGNED_LOAD64(insert_tail);
-		uint32_t prev_hash = HashBytes(GetUint32AtOffset(input_bytes, 0), shift);
+		input_bytes = UNALIGNED_LOAD64(ip - 1);
+		prev_hash = HashBytes(GetUint32AtOffset(input_bytes, 0), shift);
 		table[prev_hash] = ip - base_ip - 1;
-		uint32_t cur_hash = HashBytes(GetUint32AtOffset(input_bytes, 1), shift);
+		cur_hash = HashBytes(GetUint32AtOffset(input_bytes, 1), shift);
 		candidate = base_ip + table[cur_hash];
 		candidate_bytes = UNALIGNED_LOAD32(candidate);
 		table[cur_hash] = ip - base_ip;
@@ -501,7 +504,6 @@ snappy_compress(
 	void *working_memory,
 	const int workmem_bytes_power_of_two)
 {
-	DCHECK(9 <= workmem_bytes_power_of_two && workmem_bytes_power_of_two <= 15);
 	int workmem_size;
 	int num_to_read;
 	uint32_t written = 0;
@@ -542,6 +544,9 @@ MODULE_DESCRIPTION("Snappy Compressor");
 int main(int argc, char *argv[])
 {
 	FILE *input_file, *output_file;
+	char *input_bufer, *output_buffer;
+	void *working_memory;
+	uint32_t input_len, max_compressed_len, compressed_len;
 	if (argc < 3) {
 		fprintf(stderr, "Usage: first argument is input file, "
 				"second argument is output file.\n"
@@ -557,7 +562,7 @@ int main(int argc, char *argv[])
 	else
 		output_file = fopen(argv[2], "wb");
 
-	char *input_bufer = (char *)malloc(MAX_INPUT_SIZE);
+	input_bufer = (char *)malloc(MAX_INPUT_SIZE);
 	if (!input_bufer)
 	{
 		fprintf(stderr, "malloc failed to allocate %d.\n", MAX_INPUT_SIZE);
@@ -566,7 +571,7 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
-	uint32_t input_len = fread(input_bufer, 1, MAX_INPUT_SIZE, input_file);
+	input_len = fread(input_bufer, 1, MAX_INPUT_SIZE, input_file);
 	if (!feof(input_file))
 	{
 		fprintf(stderr, "input was longer than %d, aborting.\n", MAX_INPUT_SIZE);
@@ -577,8 +582,8 @@ int main(int argc, char *argv[])
 	}
 	fclose(input_file);
 
-	uint32_t max_compressed_len = snappy_max_compressed_length(input_len);
-	char *output_buffer = (char*)malloc(max_compressed_len);
+	max_compressed_len = snappy_max_compressed_length(input_len);
+	output_buffer = (char*)malloc(max_compressed_len);
 	if (!output_buffer)
 	{
 		fprintf(stderr, "malloc failed to allocate %d bytes.\n", (int)max_compressed_len);
@@ -586,7 +591,7 @@ int main(int argc, char *argv[])
 		fclose(output_file);
 		return 2;
 	}
-	void *working_memory = malloc(SNAPPY_WORKMEM_BYTES);
+	working_memory = malloc(SNAPPY_WORKMEM_BYTES);
 	if (!working_memory)
 	{
 		fprintf(stderr, "malloc failed to allocate %d bytes.\n", SNAPPY_WORKMEM_BYTES);
@@ -595,7 +600,6 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
-	uint32_t compressed_len;
 	snappy_compress(input_bufer, input_len, output_buffer, &compressed_len,
 			working_memory, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
 	free(input_bufer);

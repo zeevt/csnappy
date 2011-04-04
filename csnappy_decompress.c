@@ -261,6 +261,7 @@ static int
 SD__RefillTag(struct SnappyDecompressor *this)
 {
 	const char* ip = this->ip;
+	uint32_t needed, nbuf, to_add;
 	if (ip == this->ip_limit) {
 		/* Fetch a new fragment from the reader */
 		/* All peeked bytes are used up */
@@ -277,13 +278,12 @@ SD__RefillTag(struct SnappyDecompressor *this)
 
 	/* Read the tag character */
 	DCHECK_LT(ip, this->ip_limit);
-	const uint8_t c = *(const uint8_t*)ip;
-	const uint32_t entry = char_table[c];
-	const uint32_t needed = (entry >> 11) + 1; /* +1 byte for 'c' */
+	/* +1 byte for current byte at ip */
+	needed = (char_table[*(const uint8_t*)ip] >> 11) + 1;
 	DCHECK_LE(needed, sizeof(this->scratch));
 
 	/* Read more bytes from reader if needed */
-	uint32_t nbuf = this->ip_limit - ip;
+	nbuf = this->ip_limit - ip;
 	if (nbuf < needed) {
 		/* Stitch together bytes from ip and reader to form the word
 		   contents. We store the needed bytes in "scratch_". They
@@ -297,7 +297,7 @@ SD__RefillTag(struct SnappyDecompressor *this)
 		while (nbuf < needed) {
 			if (this->src_bytes_left == 0)
 				return SNAPPY_E_OUTPUT_OVERRUN;
-			uint32_t to_add = MIN_UINT32(needed - nbuf, this->src_bytes_left);
+			to_add = MIN_UINT32(needed - nbuf, this->src_bytes_left);
 			memcpy(this->scratch + nbuf, this->src, to_add);
 			nbuf += to_add;
 			this->src += to_add;
@@ -331,16 +331,17 @@ SD__RefillTag(struct SnappyDecompressor *this)
 static noinline int
 SD__ReadUncompressedLength(struct SnappyDecompressor *this, uint32_t *result)
 {
+	uint32_t shift = 0;
+	uint8_t c;
 	DCHECK(this->ip == NULL); /* Must not have read anything yet */
 	/* Length is encoded in 1..5 bytes */
 	*result = 0;
-	uint32_t shift = 0;
 	for(;;) {
 		if (shift >= 32)
 			return SNAPPY_E_HEADER_BAD;
 		if (this->src_bytes_left == 0)
 			return SNAPPY_E_HEADER_BAD;
-		const uint8_t c = *(const uint8_t*)this->src;
+		c = *(const uint8_t*)this->src;
 		this->src += 1;
 		this->src_bytes_left -= 1;
 		*result |= (uint32_t)(c & 0x7f) << shift;
@@ -358,7 +359,9 @@ SD__ReadUncompressedLength(struct SnappyDecompressor *this, uint32_t *result)
 static inline int
 SD__Step(struct SnappyDecompressor *this, struct SnappyArrayWriter *writer)
 {
-	int ret;
+	uint8_t c;
+	uint32_t entry, trailer, length, literal_length, avail;
+	int ret, allow_fast_path;
 	const char* ip = this->ip;
 	if (this->ip_limit - ip < 5) {
 		if ((ret = SD__RefillTag(this)) != TRUE)
@@ -366,18 +369,18 @@ SD__Step(struct SnappyDecompressor *this, struct SnappyArrayWriter *writer)
 		ip = this->ip;
 	}
 
-	const uint8_t c = *(const uint8_t*)(ip++);
-	const uint32_t entry = char_table[c];
-	const uint32_t trailer = le32_to_cpu(UNALIGNED_LOAD32(ip)) &
-				 wordmask[entry >> 11];
+	c = *(const uint8_t*)(ip++);
+	entry = char_table[c];
+	trailer = le32_to_cpu(UNALIGNED_LOAD32(ip)) &
+				wordmask[entry >> 11];
 	ip += entry >> 11;
-	const uint32_t length = entry & 0xff;
+	length = entry & 0xff;
 
 	if ((c & 0x3) == LITERAL) {
-		uint32_t literal_length = length + trailer;
-		uint32_t avail = this->ip_limit - ip;
+		literal_length = length + trailer;
+		avail = this->ip_limit - ip;
 		while (avail < literal_length) {
-			int allow_fast_path = (avail >= 16);
+			allow_fast_path = (avail >= 16);
 			ret = SAW__Append(writer, ip, avail, allow_fast_path);
 			if (ret != TRUE)
 				return ret;
@@ -392,15 +395,14 @@ SD__Step(struct SnappyDecompressor *this, struct SnappyArrayWriter *writer)
 			this->ip_limit = ip + avail;
 		}
 		this->ip = ip + literal_length;
-		int allow_fast_path = (avail >= 16);
+		allow_fast_path = (avail >= 16);
 		return SAW__Append(writer, ip, literal_length, allow_fast_path);
 	} else {
 		this->ip = ip;
 		/* copy_offset/256 is encoded in bits 8..10.  By just fetching
 		   those bits, we get copy_offset (since the bit-field starts at
 		   bit 8). */
-		const uint32_t copy_offset = entry & 0x700;
-		return SAW__AppendFromSelf(writer, copy_offset + trailer, length);
+		return SAW__AppendFromSelf(writer, (entry & 0x700) + trailer, length);
 	}
 }
 
@@ -422,10 +424,10 @@ snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len
 	struct SnappyArrayWriter writer;
 	struct SnappyDecompressor decomp;
 	int ret;
+	uint32_t olen = 0;
 	writer.base = writer.op = dst;
 	SD__init(&decomp, src, src_len);
 	/* Read the uncompressed length from the front of the compressed input */
-	uint32_t olen = 0;
 	ret = SD__ReadUncompressedLength(&decomp, &olen);
 	if (unlikely(ret != SNAPPY_E_OK))
 		return ret;
