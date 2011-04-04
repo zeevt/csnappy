@@ -16,9 +16,9 @@ test: cl_tester
 	diff -u testdata/urls.10K.snappy urls.10K.snappy && echo "compress OK" && rm -f urls.10K.snappy
 
 check_leaks: cl_tester
-	valgrind --leak-check=full --show-reachable=yes ./cl_tester -d testdata/urls.10K.snappy urls.10K
-	valgrind --leak-check=full --show-reachable=yes ./cl_tester -d testdata/baddata3.snappy baddata3 || true
-	valgrind --leak-check=full --show-reachable=yes ./cl_tester testdata/urls.10K urls.10K.snappy
+	valgrind --leak-check=full --show-reachable=yes ./cl_tester -d -c <testdata/urls.10K.snappy >/dev/null
+	valgrind --leak-check=full --show-reachable=yes ./cl_tester -d -c <testdata/baddata3.snappy >/dev/null || true
+	valgrind --leak-check=full --show-reachable=yes ./cl_tester -c <testdata/urls.10K >/dev/null
 
 libcsnappy.so: csnappy_compress.c csnappy_decompress.c csnappy_internal.h
 	$(CC) $(CFLAGS) $(OPT_FLAGS) -fPIC -DPIC -c -o csnappy_compress.o csnappy_compress.c
