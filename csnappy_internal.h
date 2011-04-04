@@ -85,7 +85,7 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #ifdef __KERNEL__
 #include <asm/byteorder.h>
 #else
-#if defined(WORDS_BIGENDIAN)
+#if defined(__BIG_ENDIAN) && !defined(__LITTLE_ENDIAN)
 
 /* The following guarantees declaration of the byte swap functions. */
 #ifdef _MSC_VER
@@ -108,12 +108,12 @@ static inline uint16_t le32_to_cpu(uint16_t v) { return bswap_16(v); }
 static inline uint32_t cpu_to_le32(uint32_t v) { return bswap_32(v); }
 static inline uint32_t le32_to_cpu(uint32_t v) { return bswap_32(v); }
 
-#else /* !defined(WORDS_BIGENDIAN) */
+#else /* !defined(__BIG_ENDIAN) */
 #define cpu_to_le16(x) (x)
 #define le16_to_cpu(x) (x)
 #define cpu_to_le32(x) (x)
 #define le32_to_cpu(x) (x)
-#endif /* !defined(WORDS_BIGENDIAN) */
+#endif /* !defined(__BIG_ENDIAN) */
 #endif /* !defined(__KERNEL__) */
 #if !defined(__LITTLE_ENDIAN) && !defined(__BIG_ENDIAN)
 # error __LITTLE_ENDIAN or __BIG_ENDIAN has to be defined
