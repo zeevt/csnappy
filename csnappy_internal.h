@@ -44,6 +44,13 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #include <stdint.h>
 #endif
 
+#ifndef __KERNEL__
+#define min(x, y) ({                            \
+        typeof(x) _min1 = (x);                  \
+        typeof(y) _min2 = (y);                  \
+        (void) (&_min1 == &_min2);              \
+        _min1 < _min2 ? _min1 : _min2; })
+#endif
 
 /* Static prediction hints. */
 #ifdef __KERNEL__

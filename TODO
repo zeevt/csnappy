@@ -1,4 +1,3 @@
 * how come compress can't fail?
-* decompress_fragment for zram
 * a bit better userspace makefile
 * run time choice of compression algo in zram

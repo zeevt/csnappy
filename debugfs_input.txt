@@ -1,0 +1,2 @@
+set_super_value raid_stride 0
+set_super_value raid_stripe_width 0

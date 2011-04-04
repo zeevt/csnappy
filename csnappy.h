@@ -19,22 +19,22 @@ snappy_max_compressed_length(uint32_t source_len) __attribute__((const));
 
 /*
  * Flat array compression that does not emit the "uncompressed length"
- * prefix. Compresses "input" string to the "*op" buffer.
+ * prefix. Compresses "input" array to the "output" array.
  *
- * REQUIRES: "input" is at most "kBlockSize" bytes long.
- * REQUIRES: "op" points to an array of memory that is at least
- * "snappy_max_compressed_length(input.size())" in size.
+ * REQUIRES: "input" is at most 32KiB long.
+ * REQUIRES: "output" points to an array of memory that is at least
+ * "snappy_max_compressed_length(input_length)" in size.
  * REQUIRES: working_memory has (1 << workmem_bytes_power_of_two) bytes.
  * REQUIRES: 9 <= workmem_bytes_power_of_two <= 15.
  *
- * Returns an "end" pointer into "op" buffer.
- * "end - op" is the compressed size of "input".
+ * Returns an "end" pointer into "output" buffer.
+ * "end - output" is the compressed size of "input".
  */
 char*
 snappy_compress_fragment(
-	const char* const input,
-	const uint32_t input_size,
-	char *op,
+	const char* input,
+	const uint32_t input_length,
+	char *output,
 	void *working_memory,
 	const int workmem_bytes_power_of_two);
 
@@ -83,6 +83,17 @@ int
 snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len);
 
 /*
+ * Safely decompresses stream src_len bytes long read from src to dst.
+ * Maximum available space at dst should be provided in *dst_len by caller.
+ * If compressed stream needs more space, it will not overflow and return
+ *  SNAPPY_E_OUTPUT_OVERRUN.
+ * On success, sets *dst_len to actal number of bytes decompressed.
+ * Iff sucessful, returns SNAPPY_E_OK.
+ */
+int
+snappy_decompress_noheader(const char *src, uint32_t src_len, char *dst, uint32_t *dst_len);
+
+/*
  * Return values (< 0 = Error)
  */
 #define SNAPPY_E_OK			0
@@ -90,7 +101,6 @@ snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len
 #define SNAPPY_E_OUTPUT_INSUF		(-2)
 #define SNAPPY_E_OUTPUT_OVERRUN		(-3)
 #define SNAPPY_E_INPUT_NOT_CONSUMED	(-4)
-#define SNAPPY_E_UNEXPECTED_OUTPUT_LEN	(-5)
-#define SNAPPY_E_DATA_MALFORMED		(-6)
+#define SNAPPY_E_DATA_MALFORMED		(-5)
 
 #endif
