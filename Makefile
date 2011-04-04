@@ -4,12 +4,12 @@ DBG_FLAGS = -ggdb -O0 -DDEBUG
 CFLAGS = -std=gnu89 -Wall -pedantic -D__LITTLE_ENDIAN -DHAVE_BUILTIN_CTZ
 LDFLAGS = -Wl,-O1
 
-all: test
+all: cl_test check_leaks
 
 cl_tester: cl_tester.c csnappy.h libcsnappy.so
 	$(CC) $(CFLAGS) $(OPT_FLAGS) -o $@ $< -L . -lcsnappy
 
-test: cl_tester
+cl_test: cl_tester
 	rm -f urls.10K && ./cl_tester -d testdata/urls.10K.snappy urls.10K && \
 	diff -u testdata/urls.10K urls.10K && echo "decompress OK" && rm -f urls.10K
 	rm -f urls.10K.snappy && ./cl_tester testdata/urls.10K urls.10K.snappy && \

@@ -44,13 +44,6 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #include <stdint.h>
 #endif
 
-#ifndef TRUE
-#define TRUE 1
-#endif
-#ifndef FALSE
-#define FALSE 0
-#endif
-
 
 /* Static prediction hints. */
 #ifdef __KERNEL__

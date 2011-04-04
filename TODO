@@ -1,4 +1,3 @@
-* remove TRUE and FALSE
 * how come compress can't fail?
 * decompress_fragment for zram
 * a bit better userspace makefile

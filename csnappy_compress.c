@@ -427,7 +427,7 @@ snappy_compress_fragment(
 	* bytes [next_emit, ip) are unmatched. Emit them as "literal bytes."
 	*/
 	DCHECK_LE(next_emit + 16, ip_end);
-	op = EmitLiteral(op, next_emit, ip - next_emit, TRUE);
+	op = EmitLiteral(op, next_emit, ip - next_emit, 1);
 
 	/*
 	* Step 3: Call EmitCopy, and then see if another EmitCopy could
@@ -471,7 +471,7 @@ snappy_compress_fragment(
 	emit_remainder:
 	/* Emit the remaining bytes as a literal */
 	if (next_emit < ip_end)
-		op = EmitLiteral(op, next_emit, ip_end - next_emit, FALSE);
+		op = EmitLiteral(op, next_emit, ip_end - next_emit, 0);
 
 	return op;
 }

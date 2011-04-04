@@ -192,7 +192,7 @@ SAW__Append(struct SnappyArrayWriter *this,
 		memcpy(op, ip, len);
 	}
 	this->op = op + len;
-	return TRUE;
+	return 1;
 }
 
 static inline int
@@ -216,7 +216,7 @@ SAW__AppendFromSelf(struct SnappyArrayWriter *this,
 		IncrementalCopy(op - offset, op, len);
 	}
 	this->op = op + len;
-	return TRUE;
+	return 1;
 }
 
 
@@ -239,7 +239,7 @@ SD__init(struct SnappyDecompressor *this, const char *source, uint32_t src_len)
 	this->ip = NULL;
 	this->ip_limit = NULL;
 	this->peeked = 0;
-	this->eof = FALSE;
+	this->eof = 0;
 }
 
 static inline uint32_t MIN_UINT32(uint32_t a, uint32_t b)
@@ -255,7 +255,7 @@ static inline uint32_t MIN_UINT32(uint32_t a, uint32_t b)
  * in [ip_..ip_limit_-1].  Also ensures that [ip,ip+4] is readable even
  * if (ip_limit_ - ip_ < 5).
  *
- * Returns TRUE on success.
+ * Returns 1 on success.
  */
 static int
 SD__RefillTag(struct SnappyDecompressor *this)
@@ -270,7 +270,7 @@ SD__RefillTag(struct SnappyDecompressor *this)
 		ip = this->src;
 		this->peeked = this->src_bytes_left;
 		if (this->src_bytes_left == 0) {
-			this->eof = TRUE;
+			this->eof = 1;
 			return SNAPPY_E_OK;
 		}
 		this->ip_limit = ip + this->src_bytes_left;
@@ -320,7 +320,7 @@ SD__RefillTag(struct SnappyDecompressor *this)
 		/* Pass pointer to buffer returned by reader_. */
 		this->ip = ip;
 	}
-	return TRUE;
+	return 1;
 }
 
 /*
@@ -354,7 +354,7 @@ SD__ReadUncompressedLength(struct SnappyDecompressor *this, uint32_t *result)
 
 /*
  * Process the next item found in the input.
- * Returns TRUE if more data is pending.
+ * Returns 1 if more data is pending.
  */
 static inline int
 SD__Step(struct SnappyDecompressor *this, struct SnappyArrayWriter *writer)
@@ -364,7 +364,7 @@ SD__Step(struct SnappyDecompressor *this, struct SnappyArrayWriter *writer)
 	int ret, allow_fast_path;
 	const char* ip = this->ip;
 	if (this->ip_limit - ip < 5) {
-		if ((ret = SD__RefillTag(this)) != TRUE)
+		if ((ret = SD__RefillTag(this)) != 1)
 			return ret;
 		ip = this->ip;
 	}
@@ -376,34 +376,33 @@ SD__Step(struct SnappyDecompressor *this, struct SnappyArrayWriter *writer)
 	ip += entry >> 11;
 	length = entry & 0xff;
 
-	if ((c & 0x3) == LITERAL) {
-		literal_length = length + trailer;
-		avail = this->ip_limit - ip;
-		while (avail < literal_length) {
-			allow_fast_path = (avail >= 16);
-			ret = SAW__Append(writer, ip, avail, allow_fast_path);
-			if (ret != TRUE)
-				return ret;
-			literal_length -= avail;
-			this->src += this->peeked;
-			this->src_bytes_left -= this->peeked;
-			ip = this->src;
-			avail = this->src_bytes_left;
-			this->peeked = avail;
-			if (avail == 0)
-				return SNAPPY_E_INPUT_NOT_CONSUMED;
-			this->ip_limit = ip + avail;
-		}
-		this->ip = ip + literal_length;
-		allow_fast_path = (avail >= 16);
-		return SAW__Append(writer, ip, literal_length, allow_fast_path);
-	} else {
+	if ((c & 0x3) != LITERAL) {
 		this->ip = ip;
 		/* copy_offset/256 is encoded in bits 8..10.  By just fetching
 		   those bits, we get copy_offset (since the bit-field starts at
 		   bit 8). */
 		return SAW__AppendFromSelf(writer, (entry & 0x700) + trailer, length);
 	}
+
+	literal_length = length + trailer;
+	avail = this->ip_limit - ip;
+	while (avail < literal_length) {
+		allow_fast_path = (avail >= 16);
+		if ((ret = SAW__Append(writer, ip, avail, allow_fast_path)) != 1)
+			return ret;
+		literal_length -= avail;
+		this->src += this->peeked;
+		this->src_bytes_left -= this->peeked;
+		ip = this->src;
+		avail = this->src_bytes_left;
+		this->peeked = avail;
+		if (avail == 0)
+			return SNAPPY_E_INPUT_NOT_CONSUMED;
+		this->ip_limit = ip + avail;
+	}
+	this->ip = ip + literal_length;
+	allow_fast_path = (avail >= 16);
+	return SAW__Append(writer, ip, literal_length, allow_fast_path);
 }
 
 
@@ -436,10 +435,10 @@ snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len
 		return SNAPPY_E_OUTPUT_INSUF;
 	writer.op_limit = writer.op + olen;
 	/* Process the entire input */
-	while ((ret = SD__Step(&decomp, &writer)) == TRUE) { }
+	while ((ret = SD__Step(&decomp, &writer)) == 1) { }
 	if (ret != SNAPPY_E_OK)
 		return ret;
-	if (decomp.eof != TRUE)
+	if (decomp.eof != 1)
 		return SNAPPY_E_INPUT_NOT_CONSUMED;
 	if (writer.op != writer.op_limit)
 		return SNAPPY_E_UNEXPECTED_OUTPUT_LEN;
