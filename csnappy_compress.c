@@ -488,13 +488,6 @@ snappy_max_compressed_length(uint32_t source_len)
 EXPORT_SYMBOL(snappy_max_compressed_length);
 #endif
 
-
-static inline int MIN_int(int a, int b)
-{
-	if (a > b) return b;
-	else return a;
-}
-
 void
 snappy_compress(
 	const char *input,
@@ -511,7 +504,7 @@ snappy_compress(
 	written += (p - compressed);
 	compressed = p;
 	while (input_length > 0) {
-		num_to_read = MIN_int(input_length, kBlockSize);
+		num_to_read = min(input_length, (uint32_t)kBlockSize);
 		workmem_size = workmem_bytes_power_of_two;
 		if (num_to_read < kBlockSize) {
 			for (workmem_size = 9;
