@@ -14,11 +14,14 @@ cl_test: cl_tester
 	diff -u testdata/urls.10K urls.10K && echo "decompress OK" && rm -f urls.10K
 	rm -f urls.10K.snappy && ./cl_tester testdata/urls.10K urls.10K.snappy && \
 	diff -u testdata/urls.10K.snappy urls.10K.snappy && echo "compress OK" && rm -f urls.10K.snappy
+	./cl_tester -S d && echo "decompression is safe"
+	./cl_tester -S c || echo "compression overwrites out buffer"
 
 check_leaks: cl_tester
 	valgrind --leak-check=full --show-reachable=yes ./cl_tester -d -c <testdata/urls.10K.snappy >/dev/null
 	valgrind --leak-check=full --show-reachable=yes ./cl_tester -d -c <testdata/baddata3.snappy >/dev/null || true
 	valgrind --leak-check=full --show-reachable=yes ./cl_tester -c <testdata/urls.10K >/dev/null
+	valgrind --leak-check=full --show-reachable=yes ./cl_tester -S d
 
 libcsnappy.so: csnappy_compress.c csnappy_decompress.c csnappy_internal.h
 	$(CC) $(CFLAGS) $(OPT_FLAGS) -fPIC -DPIC -c -o csnappy_compress.o csnappy_compress.c

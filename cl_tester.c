@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <sys/mman.h>
 #include "csnappy.h"
 
 #define MAX_INPUT_SIZE 10 * 1024 * 1024
@@ -107,23 +108,125 @@ static int do_compress(FILE *ifile, FILE *ofile)
 	return 0;
 }
 
+#define handle_error(msg) \
+  do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+int do_selftest_compression(void)
+{
+	char *obuf, *ibuf, *workmem;
+	FILE *ifile;
+	long PAGE_SIZE = sysconf(_SC_PAGE_SIZE);
+	uint32_t olen = 0;
+	uint32_t ilen = PAGE_SIZE + 100;
+
+	obuf = mmap(NULL, PAGE_SIZE * 2,
+		    PROT_READ | PROT_WRITE,
+		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (obuf == MAP_FAILED)
+		handle_error("mmap");
+	if (mprotect(obuf + PAGE_SIZE, PAGE_SIZE, PROT_NONE))
+		handle_error("mprotect");
+	if (!(ibuf = malloc(ilen)))
+		handle_error("malloc");
+	if (!(ifile = fopen("/dev/urandom", "rb")))
+		handle_error("fopen");
+	if (fread(ibuf, 1, ilen, ifile) < ilen)
+		handle_error("fread");
+	if (fclose(ifile))
+		handle_error("fclose");
+	if (!(workmem = malloc(SNAPPY_WORKMEM_BYTES)))
+		handle_error("malloc");
+	snappy_compress(ibuf, ilen, obuf, &olen,
+			workmem, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
+	if (munmap(obuf, PAGE_SIZE * 2))
+		handle_error("munmap");
+	free(workmem);
+	free(ibuf);
+	return 0;
+}
+
+int do_selftest_decompression(void)
+{
+	char *obuf, *ibuf, *workmem;
+	FILE *ifile;
+	int ret;
+	long PAGE_SIZE = sysconf(_SC_PAGE_SIZE);
+	uint32_t ilen = PAGE_SIZE + 100;
+	uint32_t olen = snappy_max_compressed_length(ilen);
+	if (!(obuf = malloc(olen)))
+		handle_error("malloc");
+	if (!(ibuf = malloc(ilen)))
+		handle_error("malloc");
+	if (!(ifile = fopen("/dev/urandom", "rb")))
+		handle_error("fopen");
+	if (fread(ibuf, 1, ilen, ifile) < ilen)
+		handle_error("fread");
+	if (fclose(ifile))
+		handle_error("fclose");
+	if (!(workmem = malloc(SNAPPY_WORKMEM_BYTES)))
+		handle_error("malloc");
+	snappy_compress(ibuf, ilen, obuf, &olen,
+			workmem, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
+	free(workmem);
+	free(ibuf);
+	ibuf = obuf;
+	ilen = olen;
+	olen = PAGE_SIZE;
+	obuf = mmap(NULL, PAGE_SIZE * 2,
+		    PROT_READ | PROT_WRITE,
+		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (obuf == MAP_FAILED)
+		handle_error("mmap");
+	if (mprotect(obuf + PAGE_SIZE, PAGE_SIZE, PROT_NONE))
+		handle_error("mprotect");
+	ret = snappy_decompress(ibuf, ilen, obuf, olen);
+	if (ret != SNAPPY_E_OUTPUT_INSUF)
+		fprintf(stderr, "snappy_decompress returned %d.\n", ret);
+	ret = snappy_decompress_noheader(ibuf + 2, ilen - 2, obuf, &olen);
+	if (ret != SNAPPY_E_OUTPUT_OVERRUN)
+		fprintf(stderr, "snappy_decompress returned %d.\n", ret);
+	free(ibuf);
+	if (munmap(obuf, PAGE_SIZE * 2))
+		handle_error("munmap");
+	return 0;
+}
+
 int main(int argc, char * const argv[])
 {
 	int c;
 	int decompress = 0, files = 1;
+	int selftest_compression = 0, selftest_decompression = 0;
 	const char *ifile_name, *ofile_name;
 	FILE *ifile, *ofile;
 
-	while((c = getopt(argc, argv, "dc")) != -1) {
+	while((c = getopt(argc, argv, "S:dc")) != -1) {
 		switch (c) {
+		case 'S':
+			switch (optarg[0]) {
+			case 'c':
+				selftest_compression = 1;
+				break;
+			case 'd':
+				selftest_decompression = 1;
+				break;
+			default:
+				goto usage;
+			}
+			break;
 		case 'd':
 			decompress = 1;
 			break;
 		case 'c':
 			files = 0;
 			break;
+		default:
+			goto usage;
 		}
 	}
+	if (selftest_compression)
+		return do_selftest_compression();
+	if (selftest_decompression)
+		return do_selftest_decompression();
 	ifile = stdin;
 	ofile = stdout;
 	if (files) {
@@ -145,6 +248,11 @@ int main(int argc, char * const argv[])
 	else
 		return do_compress(ifile, ofile);
 usage:
-	fprintf(stderr, "Usage: cl_tester [-d] infile outfile OR cl_tester [-d] -c\n");
+	fprintf(stderr,
+	"Usage:\n"
+	"cl_tester [-d] infile outfile\t-\t[de]compress infile to outfile.\n"
+	"cl_tester [-d] -c\t\t-\t[de]compress stdin to stdout.\n"
+	"cl_tester -S c\t\t\t-\tSelf-test compression.\n"
+	"cl_tester -S d\t\t\t-\tSelf-test decompression.\n");
 	return 1;
 }
