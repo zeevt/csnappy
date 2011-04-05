@@ -47,14 +47,14 @@ snappy_compress_fragment(
  * Takes the data stored in "input[0..input_length]" and stores
  * it in the array pointed to by "compressed".
  *
- * "*compressed_length" is set to the length of the compressed output.
+ * "*out_compressed_length" is set to the length of the compressed output.
  */
 void
 snappy_compress(
 	const char *input,
 	uint32_t input_length,
 	char *compressed,
-	uint32_t *compressed_length,
+	uint32_t *out_compressed_length,
 	void *working_memory,
 	const int workmem_bytes_power_of_two);
 
@@ -84,7 +84,7 @@ snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len
 
 /*
  * Safely decompresses stream src_len bytes long read from src to dst.
- * Maximum available space at dst should be provided in *dst_len by caller.
+ * Maximum available space at dst must be provided in *dst_len by caller.
  * If compressed stream needs more space, it will not overflow and return
  *  SNAPPY_E_OUTPUT_OVERRUN.
  * On success, sets *dst_len to actal number of bytes decompressed.
