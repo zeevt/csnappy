@@ -32,10 +32,10 @@ index da079f8..50ad124 100644
 +	depends on SNAPPY_DECOMPRESS
 +endchoice
 diff --git a/drivers/staging/zram/zram_drv.c b/drivers/staging/zram/zram_drv.c
-index 4bd8cbd..bd8b180 100644
+index 4bd8cbd..2a88f4f 100644
 --- a/drivers/staging/zram/zram_drv.c
 +++ b/drivers/staging/zram/zram_drv.c
-@@ -25,12 +25,50 @@
+@@ -25,12 +25,49 @@
  #include <linux/genhd.h>
  #include <linux/highmem.h>
  #include <linux/slab.h>
@@ -58,14 +58,13 @@ index 4bd8cbd..bd8b180 100644
 +#define COMPRESS_E_OK	SNAPPY_E_OK
 +#define WMSIZE_ORDER	13
 +#define WMSIZE		(1 << WMSIZE_ORDER)
-+static inline int
++static inline void
 +snappy_compress_(const char *src, size_t src_len, char *dst, size_t *dst_len,
 +		 char *workmem, int workmem_order)
 +{
 +	const char* end = snappy_compress_fragment(
 +		src, (uint32_t)src_len, dst, workmem, workmem_order);
 +	*dst_len = end - dst;
-+	return COMPRESS_E_OK;
 +}
 +#define COMPRESS(src, src_len, dst, dst_len, wm) \
 +	snappy_compress_(src, src_len, dst, dst_len, wm, WMSIZE_ORDER)
@@ -87,7 +86,7 @@ index 4bd8cbd..bd8b180 100644
  /* Globals */
  static int zram_major;
  struct zram *devices;
-@@ -253,7 +291,7 @@ static int zram_read(struct zram *zram, struct bio *bio)
+@@ -253,7 +290,7 @@ static int zram_read(struct zram *zram, struct bio *bio)
  		cmem = kmap_atomic(zram->table[index].page, KM_USER1) +
  				zram->table[index].offset;
  
@@ -96,7 +95,7 @@ index 4bd8cbd..bd8b180 100644
  			cmem + sizeof(*zheader),
  			xv_get_object_size(cmem) - sizeof(*zheader),
  			user_mem, &clen);
-@@ -262,7 +300,7 @@ static int zram_read(struct zram *zram, struct bio *bio)
+@@ -262,7 +299,7 @@ static int zram_read(struct zram *zram, struct bio *bio)
  		kunmap_atomic(cmem, KM_USER1);
  
  		/* Should NEVER happen. Return bio error if it does. */
@@ -105,22 +104,28 @@ index 4bd8cbd..bd8b180 100644
  			pr_err("Decompression failed! err=%d, page=%u\n",
  				ret, index);
  			zram_stat64_inc(zram, &zram->stats.failed_reads);
-@@ -327,12 +365,12 @@ static int zram_write(struct zram *zram, struct bio *bio)
+@@ -327,18 +364,11 @@ static int zram_write(struct zram *zram, struct bio *bio)
  			continue;
  		}
  
 -		ret = lzo1x_1_compress(user_mem, PAGE_SIZE, src, &clen,
-+		ret = COMPRESS(user_mem, PAGE_SIZE, src, &clen,
- 					zram->compress_workmem);
+-					zram->compress_workmem);
++		COMPRESS(user_mem, PAGE_SIZE, src, &clen,
++			 zram->compress_workmem);
  
  		kunmap_atomic(user_mem, KM_USER0);
  
 -		if (unlikely(ret != LZO_E_OK)) {
-+		if (unlikely(ret != COMPRESS_E_OK)) {
- 			mutex_unlock(&zram->lock);
- 			pr_err("Compression failed! err=%d\n", ret);
- 			zram_stat64_inc(zram, &zram->stats.failed_writes);
-@@ -516,7 +554,7 @@ int zram_init_device(struct zram *zram)
+-			mutex_unlock(&zram->lock);
+-			pr_err("Compression failed! err=%d\n", ret);
+-			zram_stat64_inc(zram, &zram->stats.failed_writes);
+-			goto out;
+-		}
+-
+ 		/*
+ 		 * Page is incompressible. Store it as-is (uncompressed)
+ 		 * since we do not want to return too many disk write
+@@ -516,7 +546,7 @@ int zram_init_device(struct zram *zram)
  
  	zram_set_disksize(zram, totalram_pages << PAGE_SHIFT);
  
@@ -131,7 +136,7 @@ index 4bd8cbd..bd8b180 100644
  		ret = -ENOMEM;
 diff --git a/include/linux/csnappy.h b/include/linux/csnappy.h
 new file mode 100644
-index 0000000..9b6fd01
+index 0000000..3420fff
 --- /dev/null
 +++ b/include/linux/csnappy.h
 @@ -0,0 +1,106 @@
@@ -184,14 +189,14 @@ index 0000000..9b6fd01
 + * Takes the data stored in "input[0..input_length]" and stores
 + * it in the array pointed to by "compressed".
 + *
-+ * "*compressed_length" is set to the length of the compressed output.
++ * "*out_compressed_length" is set to the length of the compressed output.
 + */
 +void
 +snappy_compress(
 +	const char *input,
 +	uint32_t input_length,
 +	char *compressed,
-+	uint32_t *compressed_length,
++	uint32_t *out_compressed_length,
 +	void *working_memory,
 +	const int workmem_bytes_power_of_two);
 +
@@ -221,7 +226,7 @@ index 0000000..9b6fd01
 +
 +/*
 + * Safely decompresses stream src_len bytes long read from src to dst.
-+ * Maximum available space at dst should be provided in *dst_len by caller.
++ * Maximum available space at dst must be provided in *dst_len by caller.
 + * If compressed stream needs more space, it will not overflow and return
 + *  SNAPPY_E_OUTPUT_OVERRUN.
 + * On success, sets *dst_len to actal number of bytes decompressed.
@@ -293,10 +298,10 @@ index 0000000..399d070
 +obj-$(CONFIG_SNAPPY_DECOMPRESS) += csnappy_decompress.o
 diff --git a/lib/snappy/csnappy_compress.c b/lib/snappy/csnappy_compress.c
 new file mode 100644
-index 0000000..f9ed6a3
+index 0000000..2e276c0
 --- /dev/null
 +++ b/lib/snappy/csnappy_compress.c
-@@ -0,0 +1,539 @@
+@@ -0,0 +1,532 @@
 +/*
 +Copyright 2011, Google Inc.
 +All rights reserved.
@@ -787,13 +792,6 @@ index 0000000..f9ed6a3
 +EXPORT_SYMBOL(snappy_max_compressed_length);
 +#endif
 +
-+
-+static inline int MIN_int(int a, int b)
-+{
-+	if (a > b) return b;
-+	else return a;
-+}
-+
 +void
 +snappy_compress(
 +	const char *input,
@@ -810,7 +808,7 @@ index 0000000..f9ed6a3
 +	written += (p - compressed);
 +	compressed = p;
 +	while (input_length > 0) {
-+		num_to_read = MIN_int(input_length, kBlockSize);
++		num_to_read = min(input_length, (uint32_t)kBlockSize);
 +		workmem_size = workmem_bytes_power_of_two;
 +		if (num_to_read < kBlockSize) {
 +			for (workmem_size = 9;
