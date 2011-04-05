@@ -2,6 +2,16 @@
 
 TESTFILE="/usr/portage/distfiles/qt-everywhere-opensource-src-4.7.2.tar.gz"
 
+if [ ! -f MD5SUMS.gz ]; then
+rm -rf temp
+mkdir temp
+cd temp
+time tar xzf ${TESTFILE}
+find ./ -type f | sort | xargs -L 1 md5sum | gzip -9 -c > ../MD5SUMS.gz
+cd ..
+rm -rf temp
+fi
+
 grep -q " $PWD/zram0mnt " /proc/mounts && umount zram0mnt
 mkdir -p zram0mnt
 echo 1 >/sys/block/zram0/reset || exit
@@ -15,10 +25,14 @@ mount -o noatime,barrier=0,data=writeback,nobh,discard /dev/zram0 zram0mnt
 dd if=${TESTFILE} of=/dev/null >/dev/null 2>&1
 cd zram0mnt
 time tar xzf ${TESTFILE}
-sleep 10
+sync
+sleep 5
+echo 3 > /proc/sys/vm/drop_caches
+sleep 5
 cat /sys/block/zram0/orig_data_size
 cat /sys/block/zram0/compr_data_size
 cat /sys/block/zram0/mem_used_total
+gunzip -c <../MD5SUMS.gz | md5sum -c - | egrep -v ': OK$'
 cd ..
 umount zram0mnt
 echo 1 >/sys/block/zram0/reset
