@@ -32,7 +32,7 @@ index da079f8..50ad124 100644
 +	depends on SNAPPY_DECOMPRESS
 +endchoice
 diff --git a/drivers/staging/zram/zram_drv.c b/drivers/staging/zram/zram_drv.c
-index 4bd8cbd..2a88f4f 100644
+index 4bd8cbd..11d7436 100644
 --- a/drivers/staging/zram/zram_drv.c
 +++ b/drivers/staging/zram/zram_drv.c
 @@ -25,12 +25,49 @@
@@ -56,7 +56,7 @@ index 4bd8cbd..2a88f4f 100644
 +#elif defined(CONFIG_ZRAM_SNAPPY)
 +#include <linux/csnappy.h>
 +#define COMPRESS_E_OK	SNAPPY_E_OK
-+#define WMSIZE_ORDER	13
++#define WMSIZE_ORDER	min(15, PAGE_SHIFT+1)
 +#define WMSIZE		(1 << WMSIZE_ORDER)
 +static inline void
 +snappy_compress_(const char *src, size_t src_len, char *dst, size_t *dst_len,
