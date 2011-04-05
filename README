@@ -38,85 +38,91 @@ Patch for linux kernel (2.6.38.2) is available.
 Benchmark (zramtest2.sh) creates a zram block device, an ext4 filesystem on it,
  fixes the filesystem not to think it's on a striped RAID device with a single
  stripe, and then untars a gzip'd tarball to that filesystem.
+Then it syncs the filesystem, drops caches and verifies md5 checksums of
+ extracted files to cause them to be read back from zram.
 
 Results for LZO zram:
-real	0m5.337s
-user	0m4.211s
-sys	0m1.474s
-orig_data_size	645939200
-compr_data_size	320630219
-mem_used_total	326209536
+real	0m7.369s
+user	0m4.197s
+sys	0m1.459s
+orig_data_size	645906432
+compr_data_size	320629512
+mem_used_total	326131712
 
 Result for Snappy zram:
-real	0m4.864s
-user	0m4.205s
-sys	0m1.462s
-orig_data_size	645476352
-compr_data_size	325877856
-mem_used_total	331575296
+real	0m5.877s
+user	0m4.209s
+sys	0m1.455s
+orig_data_size	645918720
+compr_data_size	326060830
+mem_used_total	331780096
 
 orig_data_size is not constant from run to run. I don't know why.
 
 perf for the LZO zram:
-# Events: 121K cycles
+# Events: 16K cycles
 #
-# Overhead  Samples          Command               Shared Object                                  Symbol
-# ........ ..........  .............  ..........................  ......................................
+# Overhead         Command            Shared Object                                  Symbol
+# ........  ..............  .......................  ......................................
 #
-    37.14%      43419    flush-253:0  [lzo_compress]              [k] _lzo1x_1_do_compress
-    15.74%      18432           gzip  gzip                        [.] zip
-    14.72%      17338           gzip  gzip                        [.] treat_file.part.4.2264
-     2.30%       2696           gzip  libc-2.13.so                [.] __memcpy_ssse3
-     1.68%       2903            tar  [kernel.kallsyms]           [k] copy_user_generic_string
-     1.22%       1428           gzip  [kernel.kallsyms]           [k] copy_user_generic_string
-     0.90%       1055    flush-253:0  [kernel.kallsyms]           [k] __memcpy
-     0.64%        747    flush-253:0  [lzo_compress]              [k] lzo1x_1_compress
-     0.54%        626           gzip  gzip                        [.] treat_stdin.2262
-     0.54%        745            tar  [kernel.kallsyms]           [k] ext4_mark_iloc_dirty
-     0.46%        692            tar  [kernel.kallsyms]           [k] __memset
-     0.42%        489           gzip  gzip                        [.] treat_file.2267
-     0.28%        331             dd  [kernel.kallsyms]           [k] system_call
-     0.28%        329             dd  [kernel.kallsyms]           [k] copy_user_generic_string
-     0.28%        382            tar  [kernel.kallsyms]           [k] _raw_spin_lock
-     0.27%        322    flush-253:0  [kernel.kallsyms]           [k] mb_find_order_for_block
-     0.26%        355            tar  [kernel.kallsyms]           [k] __find_get_block
-     0.26%        299    flush-253:0  [kernel.kallsyms]           [k] _raw_spin_lock
-     0.23%        275           gzip  gzip                        [.] compress_block.2644.2190
-     0.22%        258    flush-253:0  [kernel.kallsyms]           [k] __memset
-     0.22%        304            tar  [kernel.kallsyms]           [k] __ext4_get_inode_loc
-     0.20%        344            tar  [kernel.kallsyms]           [k] mark_page_accessed
+    24.89%     flush-253:0  [lzo_compress]           [k] _lzo1x_1_do_compress
+    12.55%            gzip  gzip                     [.] zip
+    12.13%            gzip  gzip                     [.] treat_file.part.4.2264
+     7.88%          md5sum  [lzo_decompress]         [k] lzo1x_decompress_safe
+     5.38%          md5sum  md5sum                   [.] digest_file.isra.2.2089
+     3.79%          md5sum  md5sum                   [.] 0x3224          
+     1.89%            gzip  libc-2.13.so             [.] __memcpy_ssse3
+     1.28%             tar  [kernel.kallsyms]        [k] copy_user_generic_string
+     1.10%            gzip  [kernel.kallsyms]        [k] copy_user_generic_string
+     0.74%     flush-253:0  [kernel.kallsyms]        [k] memcpy
+     0.65%          md5sum  md5sum                   [.] __libc_csu_init
+     0.60%          md5sum  [zram]                   [k] zram_make_request
+     0.48%     flush-253:0  [lzo_compress]           [k] lzo1x_1_compress
+     0.47%          md5sum  [kernel.kallsyms]        [k] copy_user_generic_string
+     0.44%            gzip  gzip                     [.] treat_stdin.2262
+     0.43%             tar  [kernel.kallsyms]        [k] ext4_mark_iloc_dirty
+     0.34%             tar  [kernel.kallsyms]        [k] __memset
+     0.34%            gzip  gzip                     [.] treat_file.2267
+     0.30%              dd  [kernel.kallsyms]        [k] system_call
+     0.29%         swapper  [kernel.kallsyms]        [k] mwait_idle
+     0.23%             tar  [kernel.kallsyms]        [k] __ext4_get_inode_loc
+     0.22%             tar  [kernel.kallsyms]        [k] __find_get_block
+     0.22%              dd  [kernel.kallsyms]        [k] copy_user_generic_string
+     0.21%     flush-253:0  [kernel.kallsyms]        [k] __memset
+     0.21%             tar  [kernel.kallsyms]        [k] _raw_spin_lock
 
 perf for Snappy zram:
-# Events: 97K cycles
+# Events: 13K cycles
 #
-# Overhead  Samples          Command                Shared Object                                               Symbol
-# ........ ..........  .............  ...........................  ...................................................
+# Overhead      Command          Shared Object                                 Symbol
+# ........  ...........  .....................  .....................................
 #
-    21.29%      18655           gzip  gzip                         [.] zip
-    20.11%      17737           gzip  gzip                         [.] treat_file.part.4.2264
-    15.53%      13663    flush-253:0  [csnappy_compress]           [k] snappy_compress_fragment
-     3.20%       2811           gzip  libc-2.13.so                 [.] __memcpy_ssse3
-     2.79%       2461    flush-253:0  [kernel.kallsyms]            [k] __memcpy
-     2.24%       3675            tar  [kernel.kallsyms]            [k] copy_user_generic_string
-     1.80%       1584           gzip  [kernel.kallsyms]            [k] copy_user_generic_string
-     1.22%       1078    flush-253:0  [kernel.kallsyms]            [k] __memset
-     0.73%        635           gzip  gzip                         [.] treat_stdin.2262
-     0.68%        923            tar  [kernel.kallsyms]            [k] ext4_mark_iloc_dirty
-     0.66%        892            tar  [kernel.kallsyms]            [k] __memset
-     0.56%        485           gzip  gzip                         [.] treat_file.2267
-     0.41%        360             dd  [kernel.kallsyms]            [k] system_call
-     0.39%        499            tar  [kernel.kallsyms]            [k] _raw_spin_lock
-     0.39%        343    flush-253:0  [kernel.kallsyms]            [k] mb_find_order_for_block
-     0.36%        459            tar  [kernel.kallsyms]            [k] __find_get_block
-     0.35%        303             dd  [kernel.kallsyms]            [k] copy_user_generic_string
-     0.32%        287    flush-253:0  [kernel.kallsyms]            [k] _raw_spin_lock
-     0.30%        387            tar  [kernel.kallsyms]            [k] __ext4_get_inode_loc
-     0.29%        257           gzip  gzip                         [.] compress_block.2644.2190
-     0.27%        431            tar  [kernel.kallsyms]            [k] mark_page_accessed
-     0.25%        288            tar  tar                          [.] contains_dot_dot
-     0.24%        215           gzip  gzip                         [.] memcpy@plt
-     0.24%        211    flush-253:0  [kernel.kallsyms]            [k] __lookup_tag
-     0.23%        320            tar  [kernel.kallsyms]            [k] kmem_cache_alloc
-     0.22%        276            tar  [kernel.kallsyms]            [k] system_call
-     0.22%        194    flush-253:0  [zram]                       [k] zram_make_request
-     0.21%        185    flush-253:0  [kernel.kallsyms]            [k] mb_find_extent.constprop.49
+    15.82%         gzip  gzip                   [.] zip
+    14.43%         gzip  gzip                   [.] treat_file.part.4.2264
+    11.11%  flush-253:0  [csnappy_compress]     [k] snappy_compress_fragment
+     6.22%       md5sum  md5sum                 [.] digest_file.isra.2.2089
+     5.46%       md5sum  [csnappy_decompress]   [k] snappy_decompress_noheader
+     5.12%       md5sum  md5sum                 [.] 0x338f          
+     2.34%         gzip  libc-2.13.so           [.] __memcpy_ssse3
+     1.97%  flush-253:0  [kernel.kallsyms]      [k] memcpy
+     1.54%          tar  [kernel.kallsyms]      [k] copy_user_generic_string
+     1.14%         gzip  [kernel.kallsyms]      [k] copy_user_generic_string
+     0.76%  flush-253:0  [kernel.kallsyms]      [k] __memset
+     0.73%       md5sum  [zram]                 [k] zram_make_request
+     0.72%       md5sum  md5sum                 [.] __libc_csu_init
+     0.51%          tar  [kernel.kallsyms]      [k] ext4_mark_iloc_dirty
+     0.51%       md5sum  [kernel.kallsyms]      [k] copy_user_generic_string
+     0.50%          tar  [kernel.kallsyms]      [k] __memset
+     0.49%         gzip  gzip                   [.] treat_file.2267
+     0.47%       md5sum  [kernel.kallsyms]      [k] memcpy
+     0.44%         gzip  gzip                   [.] treat_stdin.2262
+     0.35%           dd  [kernel.kallsyms]      [k] system_call
+     0.27%      swapper  [kernel.kallsyms]      [k] mwait_idle
+     0.26%          tar  [kernel.kallsyms]      [k] mark_page_accessed
+     0.26%  flush-253:0  [kernel.kallsyms]      [k] mb_find_order_for_block
+     0.25%  flush-253:0  [kernel.kallsyms]      [k] _raw_spin_lock
+     0.24%          tar  [kernel.kallsyms]      [k] __ext4_get_inode_loc
+     0.24%          tar  [kernel.kallsyms]      [k] _raw_spin_lock
+     0.24%          tar  [kernel.kallsyms]      [k] __find_get_block
+     0.22%           dd  [kernel.kallsyms]      [k] copy_user_generic_string
+     0.20%          tar  tar                    [.] contains_dot_dot
