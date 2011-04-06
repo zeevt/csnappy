@@ -29,9 +29,9 @@ sync
 sleep 5
 echo 3 > /proc/sys/vm/drop_caches
 sleep 5
-cat /sys/block/zram0/orig_data_size
-cat /sys/block/zram0/compr_data_size
-cat /sys/block/zram0/mem_used_total
+echo -ne "orig_data_size\t" | cat - /sys/block/zram0/orig_data_size
+echo -ne "compr_data_size\t" | cat - /sys/block/zram0/compr_data_size
+echo -ne "mem_used_total\t" | cat - /sys/block/zram0/mem_used_total
 gunzip -c <../MD5SUMS.gz | md5sum -c - | egrep -v ': OK$'
 cd ..
 umount zram0mnt

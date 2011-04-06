@@ -45,11 +45,11 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #endif
 
 #ifndef __KERNEL__
-#define min(x, y) ({				\
+#define min(x, y) (__extension__ ({		\
 	typeof(x) _min1 = (x);			\
 	typeof(y) _min2 = (y);			\
 	(void) (&_min1 == &_min2);		\
-	_min1 < _min2 ? _min1 : _min2; })
+	_min1 < _min2 ? _min1 : _min2; }))
 #endif
 
 /* Static prediction hints. */
@@ -85,7 +85,13 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #ifdef __KERNEL__
 #include <asm/byteorder.h>
 #else
-#if defined(__BIG_ENDIAN) && !defined(__LITTLE_ENDIAN)
+#if !defined(__LITTLE_ENDIAN) && !defined(__BIG_ENDIAN)
+# error __LITTLE_ENDIAN or __BIG_ENDIAN must to be defined
+#endif
+#if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
+# error __LITTLE_ENDIAN or __BIG_ENDIAN must to be defined, not both!
+#endif
+#if defined(__BIG_ENDIAN)
 
 /* The following guarantees declaration of the byte swap functions. */
 #ifdef _MSC_VER
@@ -104,7 +110,7 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #endif
 
 static inline uint16_t cpu_to_le16(uint32_t v) { return bswap_16(v); }
-static inline uint16_t le32_to_cpu(uint16_t v) { return bswap_16(v); }
+static inline uint16_t le16_to_cpu(uint16_t v) { return bswap_16(v); }
 static inline uint32_t cpu_to_le32(uint32_t v) { return bswap_32(v); }
 static inline uint32_t le32_to_cpu(uint32_t v) { return bswap_32(v); }
 
@@ -115,9 +121,6 @@ static inline uint32_t le32_to_cpu(uint32_t v) { return bswap_32(v); }
 #define le32_to_cpu(x) (x)
 #endif /* !defined(__BIG_ENDIAN) */
 #endif /* !defined(__KERNEL__) */
-#if !defined(__LITTLE_ENDIAN) && !defined(__BIG_ENDIAN)
-# error __LITTLE_ENDIAN or __BIG_ENDIAN has to be defined
-#endif
 
 
 /* Potentially unaligned loads and stores. */

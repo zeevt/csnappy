@@ -33,7 +33,6 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 */
 
 #include "csnappy_internal.h"
-
 #ifdef __KERNEL__
 #include <linux/kernel.h>
 #include <linux/string.h>
@@ -41,7 +40,6 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #include "linux/csnappy.h"
 #else
 #include "csnappy.h"
-#include <stdlib.h>
 #include <string.h>
 #endif
 
@@ -90,7 +88,7 @@ static inline int FindLSBSetNonZero64(uint64_t n)
 
 
 static inline char*
-Varint__Encode32(char *sptr, uint32_t v)
+encode_varint32(char *sptr, uint32_t v)
 {
 	uint8_t* ptr = (uint8_t*)sptr;
 	static const int B = 128;
@@ -205,37 +203,39 @@ FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 	}
 	return matched;
 }
-#else
+#else /* !defined(__x86_64__) */
 static inline int
 FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 {
 	/* Implementation based on the x86-64 version, above. */
-	DCHECK_GE(s2_limit, s2);
 	int matched = 0;
+	DCHECK_GE(s2_limit, s2);
 
 	while (s2 <= s2_limit - 4 &&
 		UNALIGNED_LOAD32(s2) == UNALIGNED_LOAD32(s1 + matched)) {
 		s2 += 4;
 		matched += 4;
 	}
-#ifdef __LITTLE_ENDIAN
+#if defined(__LITTLE_ENDIAN)
 	if (s2 <= s2_limit - 4) {
 		uint32_t x = UNALIGNED_LOAD32(s2) ^ UNALIGNED_LOAD32(s1 + matched);
 		int matching_bits = FindLSBSetNonZero(x);
 		matched += matching_bits >> 3;
 	} else {
-#else
 		while ((s2 < s2_limit) && (s1[matched] == *s2)) {
 			++s2;
 			++matched;
 		}
-#endif
-#ifdef __LITTLE_ENDIAN
+	}
+#else
+	while ((s2 < s2_limit) && (s1[matched] == *s2)) {
+		++s2;
+		++matched;
 	}
 #endif
 	return matched;
 }
-#endif
+#endif /* !defined(__x86_64__) */
 
 
 static inline char*
@@ -500,7 +500,7 @@ snappy_compress(
 	int workmem_size;
 	int num_to_read;
 	uint32_t written = 0;
-	char *p = Varint__Encode32(compressed, input_length);
+	char *p = encode_varint32(compressed, input_length);
 	written += (p - compressed);
 	compressed = p;
 	while (input_length > 0) {

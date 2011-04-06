@@ -33,7 +33,6 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 */
 
 #include "csnappy_internal.h"
-
 #ifdef __KERNEL__
 #include <linux/kernel.h>
 #include <linux/string.h>
@@ -41,7 +40,6 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #include "linux/csnappy.h"
 #else
 #include "csnappy.h"
-#include <stdlib.h>
 #include <string.h>
 #endif
 

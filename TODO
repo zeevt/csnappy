@@ -1,2 +1,5 @@
 * a bit better userspace makefile
-* run time choice of compression algo in zram
+* run-time choice of compression algo in zram
+* rename CamelCase symbols to linux_style
+* consider separating userspace definitions into a separate header
+* install something bigendian into a qemu image, make zram+snappy work there.
