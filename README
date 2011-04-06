@@ -23,17 +23,23 @@ Same for support in Squashfs and other parts of the kernel that currently
 To this end I cut out or port to plain ANSI C the necessary code and headers.
 To cause less confusion, I call this project (and files) csnappy.
 The work is not yet complete.
-The API is not finalized.
+The API looks right, but I welcome comments.
 The code *has* been tested in kernel-space using a patched zram and it works.
-The code has AFAIK never been tested on any architecture other than x86-64.
-The userspace testers are a hack, as is the shared library.
+The code has been tested on a qemu image emulating a G3 mac running debian 6.
+In userspace, performance (under qemu full system emulation of ppc32 on amd64)
+ is worse than LZO. I would like to know about benchmarks performed on real
+ hardware and with a newer compiler than gcc 4.4.
+Compressed files produced by ppc32 snappy are *not* the same as those produced
+ by amd64 snappy, but do decompress correctly.
+The userspace tester is a hack, as is the shared library.
 
 Someone wrote a perl wrapper for csnappy:
 http://search.cpan.org/dist/Compress-Snappy/
 https://github.com/gray/compress-snappy
 
 Patch for upstream snappy tester is available.
-Patch for linux kernel (2.6.38.2) is available.
+Patch for linux kernel (2.6.38.2) is available. I usually update this after
+ updating the code, but sometimes it takes longer.
 
 Benchmark (zramtest2.sh) creates a zram block device, an ext4 filesystem on it,
  fixes the filesystem not to think it's on a striped RAID device with a single
