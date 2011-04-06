@@ -136,7 +136,7 @@ index 4bd8cbd..11d7436 100644
  		ret = -ENOMEM;
 diff --git a/include/linux/csnappy.h b/include/linux/csnappy.h
 new file mode 100644
-index 0000000..3420fff
+index 0000000..fc97d90
 --- /dev/null
 +++ b/include/linux/csnappy.h
 @@ -0,0 +1,106 @@
@@ -147,7 +147,7 @@ index 0000000..3420fff
 +Zeev Tarantov <zeev.tarantov@gmail.com>
 +*/
 +
-+#define CSNAPPY_VERSION	1
++#define CSNAPPY_VERSION	2
 +
 +#define SNAPPY_WORKMEM_BYTES_POWER_OF_TWO 15
 +#define SNAPPY_WORKMEM_BYTES (1 << SNAPPY_WORKMEM_BYTES_POWER_OF_TWO)
@@ -298,7 +298,7 @@ index 0000000..399d070
 +obj-$(CONFIG_SNAPPY_DECOMPRESS) += csnappy_decompress.o
 diff --git a/lib/snappy/csnappy_compress.c b/lib/snappy/csnappy_compress.c
 new file mode 100644
-index 0000000..2e276c0
+index 0000000..3509440
 --- /dev/null
 +++ b/lib/snappy/csnappy_compress.c
 @@ -0,0 +1,532 @@
@@ -337,7 +337,6 @@ index 0000000..2e276c0
 +*/
 +
 +#include "csnappy_internal.h"
-+
 +#ifdef __KERNEL__
 +#include <linux/kernel.h>
 +#include <linux/string.h>
@@ -345,7 +344,6 @@ index 0000000..2e276c0
 +#include "linux/csnappy.h"
 +#else
 +#include "csnappy.h"
-+#include <stdlib.h>
 +#include <string.h>
 +#endif
 +
@@ -394,7 +392,7 @@ index 0000000..2e276c0
 +
 +
 +static inline char*
-+Varint__Encode32(char *sptr, uint32_t v)
++encode_varint32(char *sptr, uint32_t v)
 +{
 +	uint8_t* ptr = (uint8_t*)sptr;
 +	static const int B = 128;
@@ -509,37 +507,39 @@ index 0000000..2e276c0
 +	}
 +	return matched;
 +}
-+#else
++#else /* !defined(__x86_64__) */
 +static inline int
 +FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 +{
 +	/* Implementation based on the x86-64 version, above. */
-+	DCHECK_GE(s2_limit, s2);
 +	int matched = 0;
++	DCHECK_GE(s2_limit, s2);
 +
 +	while (s2 <= s2_limit - 4 &&
 +		UNALIGNED_LOAD32(s2) == UNALIGNED_LOAD32(s1 + matched)) {
 +		s2 += 4;
 +		matched += 4;
 +	}
-+#ifdef __LITTLE_ENDIAN
++#if defined(__LITTLE_ENDIAN)
 +	if (s2 <= s2_limit - 4) {
 +		uint32_t x = UNALIGNED_LOAD32(s2) ^ UNALIGNED_LOAD32(s1 + matched);
 +		int matching_bits = FindLSBSetNonZero(x);
 +		matched += matching_bits >> 3;
 +	} else {
-+#else
 +		while ((s2 < s2_limit) && (s1[matched] == *s2)) {
 +			++s2;
 +			++matched;
 +		}
-+#endif
-+#ifdef __LITTLE_ENDIAN
++	}
++#else
++	while ((s2 < s2_limit) && (s1[matched] == *s2)) {
++		++s2;
++		++matched;
 +	}
 +#endif
 +	return matched;
 +}
-+#endif
++#endif /* !defined(__x86_64__) */
 +
 +
 +static inline char*
@@ -804,7 +804,7 @@ index 0000000..2e276c0
 +	int workmem_size;
 +	int num_to_read;
 +	uint32_t written = 0;
-+	char *p = Varint__Encode32(compressed, input_length);
++	char *p = encode_varint32(compressed, input_length);
 +	written += (p - compressed);
 +	compressed = p;
 +	while (input_length > 0) {
@@ -836,10 +836,10 @@ index 0000000..2e276c0
 +#endif
 diff --git a/lib/snappy/csnappy_decompress.c b/lib/snappy/csnappy_decompress.c
 new file mode 100644
-index 0000000..8d74d61
+index 0000000..8c50b08
 --- /dev/null
 +++ b/lib/snappy/csnappy_decompress.c
-@@ -0,0 +1,454 @@
+@@ -0,0 +1,452 @@
 +/*
 +Copyright 2011, Google Inc.
 +All rights reserved.
@@ -875,7 +875,6 @@ index 0000000..8d74d61
 +*/
 +
 +#include "csnappy_internal.h"
-+
 +#ifdef __KERNEL__
 +#include <linux/kernel.h>
 +#include <linux/string.h>
@@ -883,7 +882,6 @@ index 0000000..8d74d61
 +#include "linux/csnappy.h"
 +#else
 +#include "csnappy.h"
-+#include <stdlib.h>
 +#include <string.h>
 +#endif
 +
@@ -1296,10 +1294,10 @@ index 0000000..8d74d61
 +#endif
 diff --git a/lib/snappy/csnappy_internal.h b/lib/snappy/csnappy_internal.h
 new file mode 100644
-index 0000000..fde11a1
+index 0000000..30f8230
 --- /dev/null
 +++ b/lib/snappy/csnappy_internal.h
-@@ -0,0 +1,200 @@
+@@ -0,0 +1,203 @@
 +/*
 +Copyright 2011 Google Inc. All Rights Reserved.
 +
@@ -1347,11 +1345,11 @@ index 0000000..fde11a1
 +#endif
 +
 +#ifndef __KERNEL__
-+#define min(x, y) ({                            \
-+        typeof(x) _min1 = (x);                  \
-+        typeof(y) _min2 = (y);                  \
-+        (void) (&_min1 == &_min2);              \
-+        _min1 < _min2 ? _min1 : _min2; })
++#define min(x, y) (__extension__ ({		\
++	typeof(x) _min1 = (x);			\
++	typeof(y) _min2 = (y);			\
++	(void) (&_min1 == &_min2);		\
++	_min1 < _min2 ? _min1 : _min2; }))
 +#endif
 +
 +/* Static prediction hints. */
@@ -1387,7 +1385,13 @@ index 0000000..fde11a1
 +#ifdef __KERNEL__
 +#include <asm/byteorder.h>
 +#else
-+#if defined(__BIG_ENDIAN) && !defined(__LITTLE_ENDIAN)
++#if !defined(__LITTLE_ENDIAN) && !defined(__BIG_ENDIAN)
++# error __LITTLE_ENDIAN or __BIG_ENDIAN must to be defined
++#endif
++#if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
++# error __LITTLE_ENDIAN or __BIG_ENDIAN must to be defined, not both!
++#endif
++#if defined(__BIG_ENDIAN)
 +
 +/* The following guarantees declaration of the byte swap functions. */
 +#ifdef _MSC_VER
@@ -1406,7 +1410,7 @@ index 0000000..fde11a1
 +#endif
 +
 +static inline uint16_t cpu_to_le16(uint32_t v) { return bswap_16(v); }
-+static inline uint16_t le32_to_cpu(uint16_t v) { return bswap_16(v); }
++static inline uint16_t le16_to_cpu(uint16_t v) { return bswap_16(v); }
 +static inline uint32_t cpu_to_le32(uint32_t v) { return bswap_32(v); }
 +static inline uint32_t le32_to_cpu(uint32_t v) { return bswap_32(v); }
 +
@@ -1417,9 +1421,6 @@ index 0000000..fde11a1
 +#define le32_to_cpu(x) (x)
 +#endif /* !defined(__BIG_ENDIAN) */
 +#endif /* !defined(__KERNEL__) */
-+#if !defined(__LITTLE_ENDIAN) && !defined(__BIG_ENDIAN)
-+# error __LITTLE_ENDIAN or __BIG_ENDIAN has to be defined
-+#endif
 +
 +
 +/* Potentially unaligned loads and stores. */
