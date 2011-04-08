@@ -14,21 +14,26 @@ Google's code is written in C with a lot of C++. Some of the more interesting
  features that rely on C++ appear to have been elided from the open source
  version of Snappy.
 
-My stated goal is to get the codebase into a shape that can be accepted into the
- mainline Linux kernel and used with zram (http://code.google.com/p/compcache/).
+Goals:
+To get the codebase into a shape that can be accepted into the mainline
+ Linux kernel and used with zram (http://code.google.com/p/compcache/).
 Being able to compress vmlinux and initrd with Snappy is a secondary goal.
 Same for support in Squashfs and other parts of the kernel that currently
  support LZO.
 
+Results:
 To this end I cut out or port to plain ANSI C the necessary code and headers.
 To cause less confusion, I call this project (and files) csnappy.
 The work is not yet complete.
 The API looks right, but I welcome comments.
 The code *has* been tested in kernel-space using a patched zram and it works.
-The code has been tested on a qemu image emulating a G3 mac running debian 6.
-In userspace, performance (under qemu full system emulation of ppc32 on amd64)
- is worse than LZO. I would like to know about benchmarks performed on real
- hardware and with a newer compiler than gcc 4.4.
+The code has been tested in a qemu environment emulating a PowerPC mac running
+ Debian 6. It works in userspace and in kernel space, using Linux 2.6.38.2 + 
+ snappy patch.
+Performance, under qemu full system emulation of ppc32 on amd64, 
+ in user space and kernel space, is worse than LZO.
+I would like to know about benchmarks performed on real hardware and possibly
+ with a newer compiler than gcc 4.4.
 Compressed files produced by ppc32 snappy are *not* the same as those produced
  by amd64 snappy, but do decompress correctly.
 The userspace tester is a hack, as is the shared library.
