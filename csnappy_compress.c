@@ -35,12 +35,10 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #include "csnappy_internal.h"
 #ifdef __KERNEL__
 #include <linux/kernel.h>
-#include <linux/string.h>
 #include <linux/module.h>
 #include "linux/csnappy.h"
 #else
 #include "csnappy.h"
-#include <string.h>
 #endif
 
 
@@ -60,9 +58,10 @@ static inline int FindLSBSetNonZero64(uint64_t n)
 
 static inline int FindLSBSetNonZero(uint32_t n)
 {
-	int rc = 31;
-	for (int i = 4, shift = 1 << 4; i >= 0; --i) {
-		const uint32_t x = n << shift;
+	int rc = 31, i, shift;
+	uint32_t x;
+	for (i = 4, shift = 1 << 4; i >= 0; --i) {
+		x = n << shift;
 		if (x != 0) {
 			n = x;
 			rc -= shift;

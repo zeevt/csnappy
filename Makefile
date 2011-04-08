@@ -24,7 +24,7 @@ check_leaks: cl_tester
 	valgrind --leak-check=full --show-reachable=yes ./cl_tester -c <testdata/urls.10K >/dev/null
 	valgrind --leak-check=full --show-reachable=yes ./cl_tester -S d
 
-libcsnappy.so: csnappy_compress.c csnappy_decompress.c csnappy_internal.h
+libcsnappy.so: csnappy_compress.c csnappy_decompress.c csnappy_internal.h csnappy_internal_userspace.h
 	$(CC) $(CFLAGS) $(OPT_FLAGS) -fPIC -DPIC -c -o csnappy_compress.o csnappy_compress.c
 	$(CC) $(CFLAGS) $(OPT_FLAGS) -fPIC -DPIC -c -o csnappy_decompress.o csnappy_decompress.c
 	$(CC) $(CFLAGS) $(OPT_FLAGS) $(LDFLAGS) -shared -o $@ csnappy_compress.o csnappy_decompress.o
