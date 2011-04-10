@@ -3,5 +3,14 @@
 * rename CamelCase symbols to linux_style (?)
 * test on 32bit x86 qemu
 * test on non-x86 hardware
-* test on arm qemu
+* test on arm qemu:
+	on qemu's armv5 for which debian image exists,
+	snappy's tester has fp exception,
+	csnappy is butt slow.
+	Can Cortex A8 be emulated? Can install linux on such image?
 * test with debug kernel
+* consider hash functions with better performance on other arches.
+* consider hash table with say, 8, possible matches.
+* check what compression ratio, speed, memory use looks like if instead of
+ hash table with 16K entries for 32K values and no chaining we use a hash map
+ that stores all values (establish upper limits).
