@@ -36,8 +36,16 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #ifndef SNAPPY_INTERNAL_USERSPACE_H_
 #define SNAPPY_INTERNAL_USERSPACE_H_
 
-#include <stddef.h>
+#if defined(_MSC_VER) && (_MSC_VER <= 1300)
+typedef unsigned __int8  uint8_t;
+typedef unsigned __int16 uint16_t;
+typedef unsigned __int32 uint32_t;
+typedef unsigned __int64 uint64_t;
+#elif defined(__linux__) || defined(__GLIBC__) || defined(__WIN32__) || defined(__APPLE__)
 #include <stdint.h>
+#else
+#include <sys/types.h>
+#endif
 #include <string.h>
 
 #define min(x, y) (__extension__ ({		\
