@@ -125,12 +125,12 @@ encode_varint32(char *sptr, uint32_t v)
  */
 static inline uint32_t HashBytes(uint32_t bytes, int shift)
 {
-  uint32_t kMul = 0x1e35a7bd;
-  return (bytes * kMul) >> shift;
+	uint32_t kMul = 0x1e35a7bd;
+	return (bytes * kMul) >> shift;
 }
 static inline uint32_t Hash(const char *p, int shift)
 {
-  return HashBytes(UNALIGNED_LOAD32(p), shift);
+	return HashBytes(UNALIGNED_LOAD32(p), shift);
 }
 
 

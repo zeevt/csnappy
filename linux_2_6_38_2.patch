@@ -298,7 +298,7 @@ index 0000000..399d070
 +obj-$(CONFIG_SNAPPY_DECOMPRESS) += csnappy_decompress.o
 diff --git a/lib/snappy/csnappy_compress.c b/lib/snappy/csnappy_compress.c
 new file mode 100644
-index 0000000..1efd33d
+index 0000000..ef0f97f
 --- /dev/null
 +++ b/lib/snappy/csnappy_compress.c
 @@ -0,0 +1,531 @@
@@ -429,12 +429,12 @@ index 0000000..1efd33d
 + */
 +static inline uint32_t HashBytes(uint32_t bytes, int shift)
 +{
-+  uint32_t kMul = 0x1e35a7bd;
-+  return (bytes * kMul) >> shift;
++	uint32_t kMul = 0x1e35a7bd;
++	return (bytes * kMul) >> shift;
 +}
 +static inline uint32_t Hash(const char *p, int shift)
 +{
-+  return HashBytes(UNALIGNED_LOAD32(p), shift);
++	return HashBytes(UNALIGNED_LOAD32(p), shift);
 +}
 +
 +
@@ -1291,10 +1291,10 @@ index 0000000..ebc0a71
 +#endif
 diff --git a/lib/snappy/csnappy_internal.h b/lib/snappy/csnappy_internal.h
 new file mode 100644
-index 0000000..af8b482
+index 0000000..4252653
 --- /dev/null
 +++ b/lib/snappy/csnappy_internal.h
-@@ -0,0 +1,79 @@
+@@ -0,0 +1,78 @@
 +/*
 +Copyright 2011 Google Inc. All Rights Reserved.
 +
@@ -1337,7 +1337,6 @@ index 0000000..af8b482
 +#include "csnappy_internal_userspace.h"
 +#else
 +
-+#include <linux/stddef.h>
 +#include <linux/types.h>
 +#include <linux/string.h>
 +#include <linux/compiler.h>

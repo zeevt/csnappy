@@ -40,7 +40,6 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #include "csnappy_internal_userspace.h"
 #else
 
-#include <linux/stddef.h>
 #include <linux/types.h>
 #include <linux/string.h>
 #include <linux/compiler.h>
