@@ -4,6 +4,9 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include "csnappy.h"
+#ifndef MAP_ANONYMOUS
+#define MAP_ANONYMOUS MAP_ANON
+#endif
 
 #define MAX_INPUT_SIZE 10 * 1024 * 1024
 
