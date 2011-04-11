@@ -122,14 +122,14 @@ int do_selftest_compression(void)
 	uint32_t olen = 0;
 	uint32_t ilen = PAGE_SIZE + 100;
 
-	obuf = mmap(NULL, PAGE_SIZE * 2,
+	obuf = (char*)mmap(NULL, PAGE_SIZE * 2,
 		    PROT_READ | PROT_WRITE,
 		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (obuf == MAP_FAILED)
 		handle_error("mmap");
 	if (mprotect(obuf + PAGE_SIZE, PAGE_SIZE, PROT_NONE))
 		handle_error("mprotect");
-	if (!(ibuf = malloc(ilen)))
+	if (!(ibuf = (char*)malloc(ilen)))
 		handle_error("malloc");
 	if (!(ifile = fopen("/dev/urandom", "rb")))
 		handle_error("fopen");
@@ -137,7 +137,7 @@ int do_selftest_compression(void)
 		handle_error("fread");
 	if (fclose(ifile))
 		handle_error("fclose");
-	if (!(workmem = malloc(SNAPPY_WORKMEM_BYTES)))
+	if (!(workmem = (char*)malloc(SNAPPY_WORKMEM_BYTES)))
 		handle_error("malloc");
 	snappy_compress(ibuf, ilen, obuf, &olen,
 			workmem, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
@@ -156,9 +156,9 @@ int do_selftest_decompression(void)
 	long PAGE_SIZE = sysconf(_SC_PAGE_SIZE);
 	uint32_t ilen = PAGE_SIZE + 100;
 	uint32_t olen = snappy_max_compressed_length(ilen);
-	if (!(obuf = malloc(olen)))
+	if (!(obuf = (char*)malloc(olen)))
 		handle_error("malloc");
-	if (!(ibuf = malloc(ilen)))
+	if (!(ibuf = (char*)malloc(ilen)))
 		handle_error("malloc");
 	if (!(ifile = fopen("/dev/urandom", "rb")))
 		handle_error("fopen");
@@ -166,7 +166,7 @@ int do_selftest_decompression(void)
 		handle_error("fread");
 	if (fclose(ifile))
 		handle_error("fclose");
-	if (!(workmem = malloc(SNAPPY_WORKMEM_BYTES)))
+	if (!(workmem = (char*)malloc(SNAPPY_WORKMEM_BYTES)))
 		handle_error("malloc");
 	snappy_compress(ibuf, ilen, obuf, &olen,
 			workmem, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
@@ -175,7 +175,7 @@ int do_selftest_decompression(void)
 	ibuf = obuf;
 	ilen = olen;
 	olen = PAGE_SIZE;
-	obuf = mmap(NULL, PAGE_SIZE * 2,
+	obuf = (char*)mmap(NULL, PAGE_SIZE * 2,
 		    PROT_READ | PROT_WRITE,
 		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (obuf == MAP_FAILED)

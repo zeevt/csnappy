@@ -4,6 +4,9 @@
 File modified for the Linux Kernel by
 Zeev Tarantov <zeev.tarantov@gmail.com>
 */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define CSNAPPY_VERSION	2
 
@@ -102,5 +105,9 @@ snappy_decompress_noheader(const char *src, uint32_t src_len, char *dst, uint32_
 #define SNAPPY_E_OUTPUT_OVERRUN		(-3)
 #define SNAPPY_E_INPUT_NOT_CONSUMED	(-4)
 #define SNAPPY_E_DATA_MALFORMED		(-5)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
