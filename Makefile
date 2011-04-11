@@ -1,5 +1,5 @@
 
-OPT_FLAGS = -g -O2 -DNDEBUG
+OPT_FLAGS = -g -O2 -DNDEBUG -fomit-frame-pointer
 DBG_FLAGS = -ggdb -O0 -DDEBUG
 CFLAGS = -std=gnu89 -Wall -pedantic -D__LITTLE_ENDIAN -DHAVE_BUILTIN_CTZ
 LDFLAGS = -Wl,-O1
@@ -7,7 +7,7 @@ LDFLAGS = -Wl,-O1
 all: cl_test check_leaks
 
 cl_tester: cl_tester.c csnappy.h libcsnappy.so
-	$(CC) $(CFLAGS) $(OPT_FLAGS) -o $@ $< -L . -lcsnappy
+	$(CC) $(CFLAGS) $(OPT_FLAGS) -D_GNU_SOURCE -o $@ $< libcsnappy.so
 
 cl_test: cl_tester
 	rm -f afifo
@@ -31,11 +31,11 @@ libcsnappy.so: csnappy_compress.c csnappy_decompress.c csnappy_internal.h csnapp
 
 install: csnappy.h libcsnappy.so
 	cp csnappy.h /usr/include/
-	cp libcsnappy.so /usr/lib64/
+	cp libcsnappy.so /usr/lib/
 
 uninstall:
 	rm -f /usr/include/csnappy.h
-	rm -f /usr/lib64/libcsnappy.so
+	rm -f /usr/lib/libcsnappy.so
 
 clean:
 	rm -f *.o *_debug libcsnappy.so cl_tester

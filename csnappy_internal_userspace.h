@@ -48,11 +48,15 @@ typedef unsigned __int64 uint64_t;
 #endif
 #include <string.h>
 
+#ifdef _GNU_SOURCE
 #define min(x, y) (__extension__ ({		\
 	typeof(x) _min1 = (x);			\
 	typeof(y) _min2 = (y);			\
 	(void) (&_min1 == &_min2);		\
 	_min1 < _min2 ? _min1 : _min2; }))
+#else
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+#endif
 
 /* Static prediction hints. */
 #define likely(x)	__builtin_expect(!!(x), 1)
