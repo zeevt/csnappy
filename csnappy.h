@@ -26,7 +26,7 @@ csnappy_max_compressed_length(uint32_t source_len) __attribute__((const));
  *
  * REQUIRES: "input" is at most 32KiB long.
  * REQUIRES: "output" points to an array of memory that is at least
- * "snappy_max_compressed_length(input_length)" in size.
+ * "csnappy_max_compressed_length(input_length)" in size.
  * REQUIRES: working_memory has (1 << workmem_bytes_power_of_two) bytes.
  * REQUIRES: 9 <= workmem_bytes_power_of_two <= 15.
  *
@@ -43,7 +43,7 @@ csnappy_compress_fragment(
 
 /*
  * REQUIRES: "compressed" must point to an area of memory that is at
- * least "snappy_max_compressed_length(input_length)" bytes in length.
+ * least "csnappy_max_compressed_length(input_length)" bytes in length.
  * REQUIRES: working_memory has (1 << workmem_bytes_power_of_two) bytes.
  * REQUIRES: 9 <= workmem_bytes_power_of_two <= 15.
  *
@@ -66,7 +66,7 @@ csnappy_compress(
  * REQUIRES: start points to compressed data.
  * REQUIRES: n is length of available compressed data.
  * 
- * Returns SNAPPY_E_OK iff was able to decode length.
+ * Returns CSNAPPY_E_OK iff was able to decode length.
  * Stores decoded length into *result.
  */
 int
@@ -75,11 +75,11 @@ csnappy_get_uncompressed_length(const char *start, uint32_t n, uint32_t *result)
 /*
  * Safely decompresses all data from array "src" of length "src_len" containing
  * entire compressed stream (with header) into array "dst" of size "dst_len".
- * REQUIRES: dst_len is at least snappy_get_uncompressed_length(...).
+ * REQUIRES: dst_len is at least csnappy_get_uncompressed_length(...).
  * 
- * Iff sucessful, returns SNAPPY_E_OK.
+ * Iff sucessful, returns CSNAPPY_E_OK.
  * If recorded length in header is greater than dst_len, returns
- *  SNAPPY_E_OUTPUT_INSUF.
+ *  CSNAPPY_E_OUTPUT_INSUF.
  * If compressed data is malformed, does not write more than dst_len into dst.
  */
 int
@@ -87,11 +87,11 @@ csnappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_le
 
 /*
  * Safely decompresses stream src_len bytes long read from src to dst.
- * Maximum available space at dst must be provided in *dst_len by caller.
+ * Amount of available space at dst must be provided in *dst_len by caller.
  * If compressed stream needs more space, it will not overflow and return
- *  SNAPPY_E_OUTPUT_OVERRUN.
+ *  CSNAPPY_E_OUTPUT_OVERRUN.
  * On success, sets *dst_len to actal number of bytes decompressed.
- * Iff sucessful, returns SNAPPY_E_OK.
+ * Iff sucessful, returns CSNAPPY_E_OK.
  */
 int
 csnappy_decompress_noheader(const char *src, uint32_t src_len, char *dst, uint32_t *dst_len);
