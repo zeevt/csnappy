@@ -8,7 +8,7 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 extern "C" {
 #endif
 
-#define CSNAPPY_VERSION	3
+#define CSNAPPY_VERSION	4
 
 #define CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO 15
 #define CSNAPPY_WORKMEM_BYTES (1 << CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO)
@@ -66,7 +66,7 @@ csnappy_compress(
  * REQUIRES: start points to compressed data.
  * REQUIRES: n is length of available compressed data.
  * 
- * Returns CSNAPPY_E_OK iff was able to decode length.
+ * Returns a number above 0 for success and below 0 for error.
  * Stores decoded length into *result.
  */
 int

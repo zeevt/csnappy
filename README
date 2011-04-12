@@ -4,6 +4,13 @@ is a compression library designed for speed rather than compression ratios.
 It is not a new concept by far. The Linux kernel currently uses LZO as the
  default fast compressor. Snappy works faster, though achieves less compression.
 
+Because Google did not provide a bitstream description or documentation
+ describing the format and the reference code is heavy obfuscated by
+ optimizations, I have written an English description and minimal C code to
+ decompress Snappy streams. It passes all tests and appears to be about twice
+ slower than the optimized version, but it is small both as source
+ (csnappy_simple.c) and as machine code (743 bytes with -O2, 574 with -Os).
+
 Snappy was written at Google some time in 2005 under the name Zippy and
  eventually released as an open source project on March 18th 2011 under a
  new name and the Apache 2 license. This license is incompatible with GPL v2

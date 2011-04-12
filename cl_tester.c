@@ -33,7 +33,7 @@ static int do_decompress(FILE *ifile, FILE *ofile)
 	}
 	fclose(ifile);
 
-	if ((status = csnappy_get_uncompressed_length(ibuf, ilen, &olen)) != CSNAPPY_E_OK) {
+	if ((status = csnappy_get_uncompressed_length(ibuf, ilen, &olen)) < 0) {
 		fprintf(stderr, "snappy_get_uncompressed_length returned %d.\n", status);
 		free(ibuf);
 		fclose(ofile);
@@ -187,7 +187,7 @@ int do_selftest_decompression(void)
 		fprintf(stderr, "snappy_decompress returned %d.\n", ret);
 	ret = csnappy_decompress_noheader(ibuf + 2, ilen - 2, obuf, &olen);
 	if (ret != CSNAPPY_E_OUTPUT_OVERRUN)
-		fprintf(stderr, "snappy_decompress returned %d.\n", ret);
+		fprintf(stderr, "csnappy_decompress_noheader returned %d.\n", ret);
 	free(ibuf);
 	if (munmap(obuf, PAGE_SIZE * 2))
 		handle_error("munmap");

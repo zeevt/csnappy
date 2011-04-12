@@ -249,7 +249,7 @@ static int
 SD__RefillTag(struct SnappyDecompressor *this)
 {
 	const char* ip = this->ip;
-	uint32_t needed, nbuf, to_add;
+	uint32_t needed, nbuf;
 	if (ip == this->ip_limit) {
 		/* Fetch a new fragment from the reader */
 		/* All peeked bytes are used up */
@@ -272,29 +272,9 @@ SD__RefillTag(struct SnappyDecompressor *this)
 
 	/* Read more bytes from reader if needed */
 	nbuf = this->ip_limit - ip;
-	if (nbuf < needed) {
-		/* Stitch together bytes from ip and reader to form the word
-		   contents. We store the needed bytes in "scratch_". They
-		   will be consumed immediately by the caller since we do not
-		   read more than we need. */
-		memmove(this->scratch, ip, nbuf);
-		/* All peeked bytes are used up */
-		this->src += this->peeked;
-		this->src_bytes_left -= this->peeked;
-		this->peeked = 0;
-		while (nbuf < needed) {
-			if (this->src_bytes_left == 0)
-				return CSNAPPY_E_OUTPUT_OVERRUN;
-			to_add = min(needed - nbuf, this->src_bytes_left);
-			memcpy(this->scratch + nbuf, this->src, to_add);
-			nbuf += to_add;
-			this->src += to_add;
-			this->src_bytes_left -= to_add;
-		}
-		DCHECK_EQ(nbuf, needed);
-		this->ip = this->scratch;
-		this->ip_limit = this->scratch + needed;
-	} else if (nbuf < 5) {
+	if (nbuf < needed)
+		return CSNAPPY_E_DATA_MALFORMED;
+	if (nbuf < 5) {
 		/* Have enough bytes, but move into scratch_ so that we do not
 		   read past end of input */
 		memmove(this->scratch, ip, nbuf);
@@ -360,8 +340,7 @@ SD__Step(struct SnappyDecompressor *this, struct SnappyArrayWriter *writer)
 
 	c = *(const uint8_t*)(ip++);
 	entry = char_table[c];
-	trailer = le32_to_cpu(UNALIGNED_LOAD32(ip)) &
-				wordmask[entry >> 11];
+	trailer = le32_to_cpu(UNALIGNED_LOAD32(ip)) & wordmask[entry >> 11];
 	ip += entry >> 11;
 	length = entry & 0xff;
 
