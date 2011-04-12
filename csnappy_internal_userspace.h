@@ -33,8 +33,8 @@ File modified for the Linux Kernel by
 Zeev Tarantov <zeev.tarantov@gmail.com>
 */
 
-#ifndef SNAPPY_INTERNAL_USERSPACE_H_
-#define SNAPPY_INTERNAL_USERSPACE_H_
+#ifndef CSNAPPY_INTERNAL_USERSPACE_H_
+#define CSNAPPY_INTERNAL_USERSPACE_H_
 
 #if defined(_MSC_VER) && (_MSC_VER <= 1300)
 typedef unsigned __int8  uint8_t;
@@ -178,4 +178,4 @@ static inline void UNALIGNED_STORE64(void *p, uint64_t v)
 
 #endif /* !(x86 || powerpc) */
 
-#endif  /* SNAPPY_INTERNAL_USERSPACE_H_ */
+#endif  /* CSNAPPY_INTERNAL_USERSPACE_H_ */

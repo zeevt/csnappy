@@ -1,36 +1,34 @@
-diff --git a/trunk/configure.ac b/trunk/configure.ac
-index 692555d..c54f64f 100644
---- a/trunk/configure.ac
-+++ b/trunk/configure.ac
+diff --git a/configure.ac b/configure.ac
+index e2864d7..b191bdd 100644
+--- a/configure.ac
++++ b/configure.ac
 @@ -84,6 +84,7 @@ AC_CHECK_LIB([lzo2], [lzo1x_1_15_compress],, [true])
  AC_CHECK_LIB([lzf], [lzf_compress],, [true])
  AC_CHECK_LIB([fastlz], [fastlz_compress],, [true])
  AC_CHECK_LIB([quicklz], [qlz_compress],, [true])
-+AC_CHECK_LIB([csnappy], [snappy_compress],, [true])
++AC_CHECK_LIB([csnappy], [csnappy_compress],, [true])
  
  # These are used by snappy-stubs-public.h.in.
  if test "$ac_cv_header_stdint_h" = "yes"; then
-diff --git a/trunk/snappy-test.h b/trunk/snappy-test.h
-index e99b884..68e0e96 100644
---- a/trunk/snappy-test.h
-+++ b/trunk/snappy-test.h
-@@ -112,6 +112,12 @@ extern "C" {
+diff --git a/snappy-test.h b/snappy-test.h
+index 18f5b1b..1696747 100644
+--- a/snappy-test.h
++++ b/snappy-test.h
+@@ -115,6 +115,10 @@ extern "C" {
  #include "quicklz.h"
  #endif
  
 +#ifdef HAVE_LIBCSNAPPY
-+extern "C" {
 +#include "csnappy.h"
-+}
 +#endif
 +
  namespace {
  namespace File {
    void Init() { }
-diff --git a/trunk/snappy_unittest.cc b/trunk/snappy_unittest.cc
-index b2de246..0c72099 100644
---- a/trunk/snappy_unittest.cc
-+++ b/trunk/snappy_unittest.cc
+diff --git a/snappy_unittest.cc b/snappy_unittest.cc
+index b2de246..0533f29 100644
+--- a/snappy_unittest.cc
++++ b/snappy_unittest.cc
 @@ -57,6 +57,8 @@ DEFINE_bool(liblzf, false,
              "(http://www.goof.com/pcg/marc/liblzf.html)");
  DEFINE_bool(fastlz, false,
@@ -54,33 +52,34 @@ index b2de246..0c72099 100644
  };
  
  static size_t MinimumRequiredOutputSpace(size_t input_size,
-@@ -156,6 +158,11 @@ static size_t MinimumRequiredOutputSpace(size_t input_size,
+@@ -156,6 +158,12 @@ static size_t MinimumRequiredOutputSpace(size_t input_size,
        return max(static_cast<int>(ceil(input_size * 1.05)), 66);
  #endif  // FASTLZ_VERSION
  
 +#ifdef CSNAPPY_VERSION
 +    case CSNAPPY:
-+      return snappy_max_compressed_length(input_size);
++      return static_cast<size_t>(csnappy_max_compressed_length(
++                                  static_cast<uint32_t>(input_size)));
 +#endif // CSNAPPY_VERSION
 +
      case SNAPPY:
        return snappy::MaxCompressedLength(input_size);
  
-@@ -266,6 +273,24 @@ static bool Compress(const char* input, size_t input_size, CompressorType comp,
+@@ -266,6 +274,24 @@ static bool Compress(const char* input, size_t input_size, CompressorType comp,
      }
  #endif  // FASTLZ_VERSION
  
 +#ifdef CSNAPPY_VERSION
 +    case CSNAPPY: {
 +      uint32_t destlen;
-+      char* mem = new char[SNAPPY_WORKMEM_BYTES];
-+      snappy_compress(input, input_size,
++      char* mem = new char[CSNAPPY_WORKMEM_BYTES];
++      csnappy_compress(input, input_size,
 +                      string_as_array(compressed),
 +                      &destlen,
 +                      mem,
-+                      SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
++                      CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
 +      delete[] mem;
-+      CHECK_LE(destlen, snappy_max_compressed_length(input_size));
++      CHECK_LE(destlen, csnappy_max_compressed_length(input_size));
 +      if (!compressed_is_preallocated) {
 +        compressed->resize(destlen);
 +      }
@@ -91,26 +90,33 @@ index b2de246..0c72099 100644
      case SNAPPY: {
        size_t destlen;
        snappy::RawCompress(input, input_size,
-@@ -364,6 +389,18 @@ static bool Uncompress(const string& compressed, CompressorType comp,
+@@ -364,9 +390,23 @@ static bool Uncompress(const string& compressed, CompressorType comp,
      }
  #endif  // FASTLZ_VERSION
  
 +#ifdef CSNAPPY_VERSION
 +    case CSNAPPY: {
-+      int ret = snappy_decompress(
++      int ret = csnappy_decompress(
 +          compressed.data(),
-+          compressed.size(),
++          (uint32_t)compressed.size(),
 +          string_as_array(output),
-+          size);
-+      CHECK_EQ(ret, SNAPPY_E_OK);
++          (uint32_t)size);
++      CHECK_EQ(ret, CSNAPPY_E_OK);
 +      break;
 +    }
 +#endif // CSNAPPY_VERSION
 +
      case SNAPPY: {
-       snappy::RawUncompress(compressed.data(), compressed.size(),
-                             string_as_array(output));
-@@ -464,7 +501,7 @@ static void Measure(const char* data,
+-      snappy::RawUncompress(compressed.data(), compressed.size(),
+-                            string_as_array(output));
++      bool ret = snappy::RawUncompress(compressed.data(),
++                                       compressed.size(),
++                                       string_as_array(output));
++      CHECK_EQ(ret, true);
+       break;
+     }
+ 
+@@ -464,7 +504,7 @@ static void Measure(const char* data,
    string urate = (uncomp_rate >= 0)
                   ? StringPrintf("%.1f", uncomp_rate)
                   : string("?");
@@ -119,7 +125,7 @@ index b2de246..0c72099 100644
           "comp %5.1f MB/s  uncomp %5s MB/s\n",
           x.c_str(),
           block_size/(1<<20),
-@@ -1011,6 +1048,7 @@ static void MeasureFile(const char* fname) {
+@@ -1011,6 +1051,7 @@ static void MeasureFile(const char* fname) {
      if (FLAGS_liblzf)   Measure(input, len, LIBLZF, repeats, 1024<<10);
      if (FLAGS_quicklz)  Measure(input, len, QUICKLZ, repeats, 1024<<10);
      if (FLAGS_fastlz)   Measure(input, len, FASTLZ, repeats, 1024<<10);

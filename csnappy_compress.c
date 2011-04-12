@@ -339,7 +339,7 @@ GetUint32AtOffset(uint64_t v, int offset)
 
 #define kInputMarginBytes 15
 char*
-snappy_compress_fragment(
+csnappy_compress_fragment(
 	const char *input,
 	const uint32_t input_size,
 	char *op,
@@ -475,20 +475,20 @@ snappy_compress_fragment(
 	return op;
 }
 #if defined(__KERNEL__) && !defined(STATIC)
-EXPORT_SYMBOL(snappy_compress_fragment);
+EXPORT_SYMBOL(csnappy_compress_fragment);
 #endif
 
 uint32_t __attribute__((const))
-snappy_max_compressed_length(uint32_t source_len)
+csnappy_max_compressed_length(uint32_t source_len)
 {
 	return 32 + source_len + source_len/6;
 }
 #if defined(__KERNEL__) && !defined(STATIC)
-EXPORT_SYMBOL(snappy_max_compressed_length);
+EXPORT_SYMBOL(csnappy_max_compressed_length);
 #endif
 
 void
-snappy_compress(
+csnappy_compress(
 	const char *input,
 	uint32_t input_length,
 	char *compressed,
@@ -513,7 +513,7 @@ snappy_compress(
 					break;
 			}
 		}
-		p = snappy_compress_fragment(
+		p = csnappy_compress_fragment(
 				input, num_to_read, compressed,
 				working_memory, workmem_size);
 		written += (p - compressed);
@@ -524,7 +524,7 @@ snappy_compress(
 	*compressed_length = written;
 }
 #if defined(__KERNEL__) && !defined(STATIC)
-EXPORT_SYMBOL(snappy_compress);
+EXPORT_SYMBOL(csnappy_compress);
 
 MODULE_LICENSE("BSD");
 MODULE_DESCRIPTION("Snappy Compressor");

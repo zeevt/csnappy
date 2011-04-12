@@ -8,17 +8,17 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 extern "C" {
 #endif
 
-#define CSNAPPY_VERSION	2
+#define CSNAPPY_VERSION	3
 
-#define SNAPPY_WORKMEM_BYTES_POWER_OF_TWO 15
-#define SNAPPY_WORKMEM_BYTES (1 << SNAPPY_WORKMEM_BYTES_POWER_OF_TWO)
+#define CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO 15
+#define CSNAPPY_WORKMEM_BYTES (1 << CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO)
 
 /*
  * Returns the maximal size of the compressed representation of
  * input data that is "source_len" bytes in length;
  */
 uint32_t
-snappy_max_compressed_length(uint32_t source_len) __attribute__((const));
+csnappy_max_compressed_length(uint32_t source_len) __attribute__((const));
 
 /*
  * Flat array compression that does not emit the "uncompressed length"
@@ -34,7 +34,7 @@ snappy_max_compressed_length(uint32_t source_len) __attribute__((const));
  * "end - output" is the compressed size of "input".
  */
 char*
-snappy_compress_fragment(
+csnappy_compress_fragment(
 	const char* input,
 	const uint32_t input_length,
 	char *output,
@@ -53,7 +53,7 @@ snappy_compress_fragment(
  * "*out_compressed_length" is set to the length of the compressed output.
  */
 void
-snappy_compress(
+csnappy_compress(
 	const char *input,
 	uint32_t input_length,
 	char *compressed,
@@ -70,7 +70,7 @@ snappy_compress(
  * Stores decoded length into *result.
  */
 int
-snappy_get_uncompressed_length(const char *start, uint32_t n, uint32_t *result);
+csnappy_get_uncompressed_length(const char *start, uint32_t n, uint32_t *result);
 
 /*
  * Safely decompresses all data from array "src" of length "src_len" containing
@@ -83,7 +83,7 @@ snappy_get_uncompressed_length(const char *start, uint32_t n, uint32_t *result);
  * If compressed data is malformed, does not write more than dst_len into dst.
  */
 int
-snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len);
+csnappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len);
 
 /*
  * Safely decompresses stream src_len bytes long read from src to dst.
@@ -94,17 +94,17 @@ snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len
  * Iff sucessful, returns SNAPPY_E_OK.
  */
 int
-snappy_decompress_noheader(const char *src, uint32_t src_len, char *dst, uint32_t *dst_len);
+csnappy_decompress_noheader(const char *src, uint32_t src_len, char *dst, uint32_t *dst_len);
 
 /*
  * Return values (< 0 = Error)
  */
-#define SNAPPY_E_OK			0
-#define SNAPPY_E_HEADER_BAD		(-1)
-#define SNAPPY_E_OUTPUT_INSUF		(-2)
-#define SNAPPY_E_OUTPUT_OVERRUN		(-3)
-#define SNAPPY_E_INPUT_NOT_CONSUMED	(-4)
-#define SNAPPY_E_DATA_MALFORMED		(-5)
+#define CSNAPPY_E_OK			0
+#define CSNAPPY_E_HEADER_BAD		(-1)
+#define CSNAPPY_E_OUTPUT_INSUF		(-2)
+#define CSNAPPY_E_OUTPUT_OVERRUN	(-3)
+#define CSNAPPY_E_INPUT_NOT_CONSUMED	(-4)
+#define CSNAPPY_E_DATA_MALFORMED	(-5)
 
 #ifdef __cplusplus
 }

@@ -10,6 +10,7 @@ cl_tester: cl_tester.c csnappy.h libcsnappy.so
 	$(CC) $(CFLAGS) $(OPT_FLAGS) -D_GNU_SOURCE -o $@ $< libcsnappy.so
 
 cl_test: cl_tester
+	export LD_LIBRARY_PATH=.
 	rm -f afifo
 	mkfifo afifo
 	./cl_tester -c <testdata/urls.10K | ./cl_tester -d -c > afifo &

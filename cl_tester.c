@@ -33,7 +33,7 @@ static int do_decompress(FILE *ifile, FILE *ofile)
 	}
 	fclose(ifile);
 
-	if ((status = snappy_get_uncompressed_length(ibuf, ilen, &olen)) != SNAPPY_E_OK) {
+	if ((status = csnappy_get_uncompressed_length(ibuf, ilen, &olen)) != CSNAPPY_E_OK) {
 		fprintf(stderr, "snappy_get_uncompressed_length returned %d.\n", status);
 		free(ibuf);
 		fclose(ofile);
@@ -47,9 +47,9 @@ static int do_decompress(FILE *ifile, FILE *ofile)
 		return 4;
 	}
 
-	status = snappy_decompress(ibuf, ilen, obuf, olen);
+	status = csnappy_decompress(ibuf, ilen, obuf, olen);
 	free(ibuf);
-	if (status != SNAPPY_E_OK) {
+	if (status != CSNAPPY_E_OK) {
 		fprintf(stderr, "snappy_decompress returned %d.\n", status);
 		free(obuf);
 		fclose(ofile);
@@ -85,7 +85,7 @@ static int do_compress(FILE *ifile, FILE *ofile)
 	}
 	fclose(ifile);
 
-	max_compressed_len = snappy_max_compressed_length(ilen);
+	max_compressed_len = csnappy_max_compressed_length(ilen);
 	if (!(obuf = (char*)malloc(max_compressed_len))) {
 		fprintf(stderr, "malloc failed to allocate %d bytes.\n", (int)max_compressed_len);
 		free(ibuf);
@@ -93,15 +93,15 @@ static int do_compress(FILE *ifile, FILE *ofile)
 		return 4;
 	}
 
-	if (!(working_memory = malloc(SNAPPY_WORKMEM_BYTES))) {
-		fprintf(stderr, "malloc failed to allocate %d bytes.\n", SNAPPY_WORKMEM_BYTES);
+	if (!(working_memory = malloc(CSNAPPY_WORKMEM_BYTES))) {
+		fprintf(stderr, "malloc failed to allocate %d bytes.\n", CSNAPPY_WORKMEM_BYTES);
 		free(ibuf);
 		fclose(ofile);
 		return 4;
 	}
 
-	snappy_compress(ibuf, ilen, obuf, &olen,
-			working_memory, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
+	csnappy_compress(ibuf, ilen, obuf, &olen,
+			working_memory, CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
 	free(ibuf);
 	free(working_memory);
 
@@ -137,10 +137,10 @@ int do_selftest_compression(void)
 		handle_error("fread");
 	if (fclose(ifile))
 		handle_error("fclose");
-	if (!(workmem = (char*)malloc(SNAPPY_WORKMEM_BYTES)))
+	if (!(workmem = (char*)malloc(CSNAPPY_WORKMEM_BYTES)))
 		handle_error("malloc");
-	snappy_compress(ibuf, ilen, obuf, &olen,
-			workmem, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
+	csnappy_compress(ibuf, ilen, obuf, &olen,
+			workmem, CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
 	if (munmap(obuf, PAGE_SIZE * 2))
 		handle_error("munmap");
 	free(workmem);
@@ -155,7 +155,7 @@ int do_selftest_decompression(void)
 	int ret;
 	long PAGE_SIZE = sysconf(_SC_PAGE_SIZE);
 	uint32_t ilen = PAGE_SIZE + 100;
-	uint32_t olen = snappy_max_compressed_length(ilen);
+	uint32_t olen = csnappy_max_compressed_length(ilen);
 	if (!(obuf = (char*)malloc(olen)))
 		handle_error("malloc");
 	if (!(ibuf = (char*)malloc(ilen)))
@@ -166,10 +166,10 @@ int do_selftest_decompression(void)
 		handle_error("fread");
 	if (fclose(ifile))
 		handle_error("fclose");
-	if (!(workmem = (char*)malloc(SNAPPY_WORKMEM_BYTES)))
+	if (!(workmem = (char*)malloc(CSNAPPY_WORKMEM_BYTES)))
 		handle_error("malloc");
-	snappy_compress(ibuf, ilen, obuf, &olen,
-			workmem, SNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
+	csnappy_compress(ibuf, ilen, obuf, &olen,
+			workmem, CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
 	free(workmem);
 	free(ibuf);
 	ibuf = obuf;
@@ -182,11 +182,11 @@ int do_selftest_decompression(void)
 		handle_error("mmap");
 	if (mprotect(obuf + PAGE_SIZE, PAGE_SIZE, PROT_NONE))
 		handle_error("mprotect");
-	ret = snappy_decompress(ibuf, ilen, obuf, olen);
-	if (ret != SNAPPY_E_OUTPUT_INSUF)
+	ret = csnappy_decompress(ibuf, ilen, obuf, olen);
+	if (ret != CSNAPPY_E_OUTPUT_INSUF)
 		fprintf(stderr, "snappy_decompress returned %d.\n", ret);
-	ret = snappy_decompress_noheader(ibuf + 2, ilen - 2, obuf, &olen);
-	if (ret != SNAPPY_E_OUTPUT_OVERRUN)
+	ret = csnappy_decompress_noheader(ibuf + 2, ilen - 2, obuf, &olen);
+	if (ret != CSNAPPY_E_OUTPUT_OVERRUN)
 		fprintf(stderr, "snappy_decompress returned %d.\n", ret);
 	free(ibuf);
 	if (munmap(obuf, PAGE_SIZE * 2))

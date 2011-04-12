@@ -33,8 +33,8 @@ File modified for the Linux Kernel by
 Zeev Tarantov <zeev.tarantov@gmail.com>
 */
 
-#ifndef SNAPPY_INTERNAL_H_
-#define SNAPPY_INTERNAL_H_
+#ifndef CSNAPPY_INTERNAL_H_
+#define CSNAPPY_INTERNAL_H_
 
 #ifndef __KERNEL__
 #include "csnappy_internal_userspace.h"
@@ -75,4 +75,4 @@ enum {
   COPY_4_BYTE_OFFSET = 3
 };
 
-#endif  /* SNAPPY_INTERNAL_H_ */
+#endif  /* CSNAPPY_INTERNAL_H_ */

@@ -32,7 +32,7 @@ index da079f8..50ad124 100644
 +	depends on SNAPPY_DECOMPRESS
 +endchoice
 diff --git a/drivers/staging/zram/zram_drv.c b/drivers/staging/zram/zram_drv.c
-index 4bd8cbd..11d7436 100644
+index 4bd8cbd..27419c4 100644
 --- a/drivers/staging/zram/zram_drv.c
 +++ b/drivers/staging/zram/zram_drv.c
 @@ -25,12 +25,49 @@
@@ -55,14 +55,14 @@ index 4bd8cbd..11d7436 100644
 +	lzo1x_decompress_safe(src, src_len, dst, dst_len)
 +#elif defined(CONFIG_ZRAM_SNAPPY)
 +#include <linux/csnappy.h>
-+#define COMPRESS_E_OK	SNAPPY_E_OK
++#define COMPRESS_E_OK	CSNAPPY_E_OK
 +#define WMSIZE_ORDER	min(15, PAGE_SHIFT+1)
 +#define WMSIZE		(1 << WMSIZE_ORDER)
 +static inline void
 +snappy_compress_(const char *src, size_t src_len, char *dst, size_t *dst_len,
 +		 char *workmem, int workmem_order)
 +{
-+	const char* end = snappy_compress_fragment(
++	const char* end = csnappy_compress_fragment(
 +		src, (uint32_t)src_len, dst, workmem, workmem_order);
 +	*dst_len = end - dst;
 +}
@@ -72,7 +72,7 @@ index 4bd8cbd..11d7436 100644
 +snappy_decompress_(const char *src, size_t src_len, char *dst, size_t *dst_len)
 +{
 +	uint32_t dst_len_ = (uint32_t)*dst_len;
-+	int ret = snappy_decompress_noheader(src, src_len, dst, &dst_len_);
++	int ret = csnappy_decompress_noheader(src, src_len, dst, &dst_len_);
 +	*dst_len = (size_t)dst_len_;
 +	return ret;
 +}
@@ -136,28 +136,31 @@ index 4bd8cbd..11d7436 100644
  		ret = -ENOMEM;
 diff --git a/include/linux/csnappy.h b/include/linux/csnappy.h
 new file mode 100644
-index 0000000..fc97d90
+index 0000000..bd6984d
 --- /dev/null
 +++ b/include/linux/csnappy.h
-@@ -0,0 +1,106 @@
+@@ -0,0 +1,113 @@
 +#ifndef __CSNAPPY_H__
 +#define __CSNAPPY_H__
 +/*
 +File modified for the Linux Kernel by
 +Zeev Tarantov <zeev.tarantov@gmail.com>
 +*/
++#ifdef __cplusplus
++extern "C" {
++#endif
 +
-+#define CSNAPPY_VERSION	2
++#define CSNAPPY_VERSION	3
 +
-+#define SNAPPY_WORKMEM_BYTES_POWER_OF_TWO 15
-+#define SNAPPY_WORKMEM_BYTES (1 << SNAPPY_WORKMEM_BYTES_POWER_OF_TWO)
++#define CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO 15
++#define CSNAPPY_WORKMEM_BYTES (1 << CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO)
 +
 +/*
 + * Returns the maximal size of the compressed representation of
 + * input data that is "source_len" bytes in length;
 + */
 +uint32_t
-+snappy_max_compressed_length(uint32_t source_len) __attribute__((const));
++csnappy_max_compressed_length(uint32_t source_len) __attribute__((const));
 +
 +/*
 + * Flat array compression that does not emit the "uncompressed length"
@@ -173,7 +176,7 @@ index 0000000..fc97d90
 + * "end - output" is the compressed size of "input".
 + */
 +char*
-+snappy_compress_fragment(
++csnappy_compress_fragment(
 +	const char* input,
 +	const uint32_t input_length,
 +	char *output,
@@ -192,7 +195,7 @@ index 0000000..fc97d90
 + * "*out_compressed_length" is set to the length of the compressed output.
 + */
 +void
-+snappy_compress(
++csnappy_compress(
 +	const char *input,
 +	uint32_t input_length,
 +	char *compressed,
@@ -209,7 +212,7 @@ index 0000000..fc97d90
 + * Stores decoded length into *result.
 + */
 +int
-+snappy_get_uncompressed_length(const char *start, uint32_t n, uint32_t *result);
++csnappy_get_uncompressed_length(const char *start, uint32_t n, uint32_t *result);
 +
 +/*
 + * Safely decompresses all data from array "src" of length "src_len" containing
@@ -222,7 +225,7 @@ index 0000000..fc97d90
 + * If compressed data is malformed, does not write more than dst_len into dst.
 + */
 +int
-+snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len);
++csnappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len);
 +
 +/*
 + * Safely decompresses stream src_len bytes long read from src to dst.
@@ -233,17 +236,21 @@ index 0000000..fc97d90
 + * Iff sucessful, returns SNAPPY_E_OK.
 + */
 +int
-+snappy_decompress_noheader(const char *src, uint32_t src_len, char *dst, uint32_t *dst_len);
++csnappy_decompress_noheader(const char *src, uint32_t src_len, char *dst, uint32_t *dst_len);
 +
 +/*
 + * Return values (< 0 = Error)
 + */
-+#define SNAPPY_E_OK			0
-+#define SNAPPY_E_HEADER_BAD		(-1)
-+#define SNAPPY_E_OUTPUT_INSUF		(-2)
-+#define SNAPPY_E_OUTPUT_OVERRUN		(-3)
-+#define SNAPPY_E_INPUT_NOT_CONSUMED	(-4)
-+#define SNAPPY_E_DATA_MALFORMED		(-5)
++#define CSNAPPY_E_OK			0
++#define CSNAPPY_E_HEADER_BAD		(-1)
++#define CSNAPPY_E_OUTPUT_INSUF		(-2)
++#define CSNAPPY_E_OUTPUT_OVERRUN	(-3)
++#define CSNAPPY_E_INPUT_NOT_CONSUMED	(-4)
++#define CSNAPPY_E_DATA_MALFORMED	(-5)
++
++#ifdef __cplusplus
++}
++#endif
 +
 +#endif
 diff --git a/lib/Kconfig b/lib/Kconfig
@@ -298,7 +305,7 @@ index 0000000..399d070
 +obj-$(CONFIG_SNAPPY_DECOMPRESS) += csnappy_decompress.o
 diff --git a/lib/snappy/csnappy_compress.c b/lib/snappy/csnappy_compress.c
 new file mode 100644
-index 0000000..ef0f97f
+index 0000000..e899e1b
 --- /dev/null
 +++ b/lib/snappy/csnappy_compress.c
 @@ -0,0 +1,531 @@
@@ -643,7 +650,7 @@ index 0000000..ef0f97f
 +
 +#define kInputMarginBytes 15
 +char*
-+snappy_compress_fragment(
++csnappy_compress_fragment(
 +	const char *input,
 +	const uint32_t input_size,
 +	char *op,
@@ -779,20 +786,20 @@ index 0000000..ef0f97f
 +	return op;
 +}
 +#if defined(__KERNEL__) && !defined(STATIC)
-+EXPORT_SYMBOL(snappy_compress_fragment);
++EXPORT_SYMBOL(csnappy_compress_fragment);
 +#endif
 +
 +uint32_t __attribute__((const))
-+snappy_max_compressed_length(uint32_t source_len)
++csnappy_max_compressed_length(uint32_t source_len)
 +{
 +	return 32 + source_len + source_len/6;
 +}
 +#if defined(__KERNEL__) && !defined(STATIC)
-+EXPORT_SYMBOL(snappy_max_compressed_length);
++EXPORT_SYMBOL(csnappy_max_compressed_length);
 +#endif
 +
 +void
-+snappy_compress(
++csnappy_compress(
 +	const char *input,
 +	uint32_t input_length,
 +	char *compressed,
@@ -817,7 +824,7 @@ index 0000000..ef0f97f
 +					break;
 +			}
 +		}
-+		p = snappy_compress_fragment(
++		p = csnappy_compress_fragment(
 +				input, num_to_read, compressed,
 +				working_memory, workmem_size);
 +		written += (p - compressed);
@@ -828,14 +835,14 @@ index 0000000..ef0f97f
 +	*compressed_length = written;
 +}
 +#if defined(__KERNEL__) && !defined(STATIC)
-+EXPORT_SYMBOL(snappy_compress);
++EXPORT_SYMBOL(csnappy_compress);
 +
 +MODULE_LICENSE("BSD");
 +MODULE_DESCRIPTION("Snappy Compressor");
 +#endif
 diff --git a/lib/snappy/csnappy_decompress.c b/lib/snappy/csnappy_decompress.c
 new file mode 100644
-index 0000000..ebc0a71
+index 0000000..2e21a42
 --- /dev/null
 +++ b/lib/snappy/csnappy_decompress.c
 @@ -0,0 +1,450 @@
@@ -1025,7 +1032,7 @@ index 0000000..ebc0a71
 +		UNALIGNED_STORE64(op + 8, UNALIGNED_LOAD64(ip + 8));
 +	} else {
 +		if (space_left < len)
-+			return SNAPPY_E_OUTPUT_OVERRUN;
++			return CSNAPPY_E_OUTPUT_OVERRUN;
 +		memcpy(op, ip, len);
 +	}
 +	this->op = op + len;
@@ -1040,7 +1047,7 @@ index 0000000..ebc0a71
 +	const int space_left = this->op_limit - op;
 +	/* -1u catches offset==0 */
 +	if (op - this->base <= offset - 1u)
-+		return SNAPPY_E_DATA_MALFORMED;
++		return CSNAPPY_E_DATA_MALFORMED;
 +	/* Fast path, used for the majority (70-80%) of dynamic invocations. */
 +	if (len <= 16 && offset >= 8 && space_left >= 16) {
 +		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(op - offset));
@@ -1049,7 +1056,7 @@ index 0000000..ebc0a71
 +		IncrementalCopyFastPath(op - offset, op, len);
 +	} else {
 +		if (space_left < len)
-+			return SNAPPY_E_OUTPUT_OVERRUN;
++			return CSNAPPY_E_OUTPUT_OVERRUN;
 +		IncrementalCopy(op - offset, op, len);
 +	}
 +	this->op = op + len;
@@ -1100,7 +1107,7 @@ index 0000000..ebc0a71
 +		this->peeked = this->src_bytes_left;
 +		if (this->src_bytes_left == 0) {
 +			this->eof = 1;
-+			return SNAPPY_E_OK;
++			return CSNAPPY_E_OK;
 +		}
 +		this->ip_limit = ip + this->src_bytes_left;
 +	}
@@ -1125,7 +1132,7 @@ index 0000000..ebc0a71
 +		this->peeked = 0;
 +		while (nbuf < needed) {
 +			if (this->src_bytes_left == 0)
-+				return SNAPPY_E_OUTPUT_OVERRUN;
++				return CSNAPPY_E_OUTPUT_OVERRUN;
 +			to_add = min(needed - nbuf, this->src_bytes_left);
 +			memcpy(this->scratch + nbuf, this->src, to_add);
 +			nbuf += to_add;
@@ -1167,9 +1174,9 @@ index 0000000..ebc0a71
 +	*result = 0;
 +	for(;;) {
 +		if (shift >= 32)
-+			return SNAPPY_E_HEADER_BAD;
++			return CSNAPPY_E_HEADER_BAD;
 +		if (*src_len == 0)
-+			return SNAPPY_E_HEADER_BAD;
++			return CSNAPPY_E_HEADER_BAD;
 +		c = *(const uint8_t*)src;
 +		src += 1;
 +		*src_len -= 1;
@@ -1179,7 +1186,7 @@ index 0000000..ebc0a71
 +		shift += 7;
 +	}
 +	*srcp = src;
-+	return SNAPPY_E_OK;
++	return CSNAPPY_E_OK;
 +}
 +
 +/*
@@ -1227,7 +1234,7 @@ index 0000000..ebc0a71
 +		avail = this->src_bytes_left;
 +		this->peeked = avail;
 +		if (avail == 0)
-+			return SNAPPY_E_INPUT_NOT_CONSUMED;
++			return CSNAPPY_E_INPUT_NOT_CONSUMED;
 +		this->ip_limit = ip + avail;
 +	}
 +	this->ip = ip + literal_length;
@@ -1237,16 +1244,16 @@ index 0000000..ebc0a71
 +
 +
 +int
-+snappy_get_uncompressed_length(const char *start, uint32_t n, uint32_t *result)
++csnappy_get_uncompressed_length(const char *start, uint32_t n, uint32_t *result)
 +{
 +	return ReadUncompressedLength(&start, &n, result);
 +}
 +#if defined(__KERNEL__) && !defined(STATIC)
-+EXPORT_SYMBOL(snappy_get_uncompressed_length);
++EXPORT_SYMBOL(csnappy_get_uncompressed_length);
 +#endif
 +
 +int
-+snappy_decompress_noheader(const char *src, uint32_t src_len, char *dst, uint32_t *dst_len)
++csnappy_decompress_noheader(const char *src, uint32_t src_len, char *dst, uint32_t *dst_len)
 +{
 +	struct SnappyArrayWriter writer;
 +	struct SnappyDecompressor decomp;
@@ -1256,42 +1263,42 @@ index 0000000..ebc0a71
 +	SD__init(&decomp, src, src_len);
 +	/* Process the entire input */
 +	while ((ret = SD__Step(&decomp, &writer)) == 1) { }
-+	if (ret != SNAPPY_E_OK)
++	if (ret != CSNAPPY_E_OK)
 +		return ret;
 +	if (decomp.eof != 1)
-+		return SNAPPY_E_INPUT_NOT_CONSUMED;
++		return CSNAPPY_E_INPUT_NOT_CONSUMED;
 +	if (writer.op > writer.op_limit)
-+		return SNAPPY_E_OUTPUT_OVERRUN;
++		return CSNAPPY_E_OUTPUT_OVERRUN;
 +	*dst_len = writer.op - writer.base;
-+	return SNAPPY_E_OK;
++	return CSNAPPY_E_OK;
 +}
 +#if defined(__KERNEL__) && !defined(STATIC)
-+EXPORT_SYMBOL(snappy_decompress_noheader);
++EXPORT_SYMBOL(csnappy_decompress_noheader);
 +#endif
 +
 +int
-+snappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len)
++csnappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len)
 +{
 +	int ret;
 +	uint32_t olen = 0;
 +	/* Read the uncompressed length from the front of the compressed input */
 +	ret = ReadUncompressedLength(&src, &src_len, &olen);
-+	if (unlikely(ret != SNAPPY_E_OK))
++	if (unlikely(ret != CSNAPPY_E_OK))
 +		return ret;
 +	/* Protect against possible DoS attack */
 +	if (unlikely(olen > dst_len))
-+		return SNAPPY_E_OUTPUT_INSUF;
-+	return snappy_decompress_noheader(src, src_len, dst, &olen);
++		return CSNAPPY_E_OUTPUT_INSUF;
++	return csnappy_decompress_noheader(src, src_len, dst, &olen);
 +}
 +#if defined(__KERNEL__) && !defined(STATIC)
-+EXPORT_SYMBOL(snappy_decompress);
++EXPORT_SYMBOL(csnappy_decompress);
 +
 +MODULE_LICENSE("BSD");
 +MODULE_DESCRIPTION("Snappy Decompressor");
 +#endif
 diff --git a/lib/snappy/csnappy_internal.h b/lib/snappy/csnappy_internal.h
 new file mode 100644
-index 0000000..4252653
+index 0000000..bd0180d
 --- /dev/null
 +++ b/lib/snappy/csnappy_internal.h
 @@ -0,0 +1,78 @@
@@ -1330,8 +1337,8 @@ index 0000000..4252653
 +Zeev Tarantov <zeev.tarantov@gmail.com>
 +*/
 +
-+#ifndef SNAPPY_INTERNAL_H_
-+#define SNAPPY_INTERNAL_H_
++#ifndef CSNAPPY_INTERNAL_H_
++#define CSNAPPY_INTERNAL_H_
 +
 +#ifndef __KERNEL__
 +#include "csnappy_internal_userspace.h"
@@ -1372,4 +1379,4 @@ index 0000000..4252653
 +  COPY_4_BYTE_OFFSET = 3
 +};
 +
-+#endif  /* SNAPPY_INTERNAL_H_ */
++#endif  /* CSNAPPY_INTERNAL_H_ */

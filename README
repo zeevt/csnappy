@@ -5,14 +5,20 @@ It is not a new concept by far. The Linux kernel currently uses LZO as the
  default fast compressor. Snappy works faster, though achieves less compression.
 
 Snappy was written at Google some time in 2005 under the name Zippy and
- eventually released as an open source project in 2011 under a new name and the
- Apache 2 license. This license is incompatible with GPL v2 and after being
- asked nicely by a representative of Mozilla Google have changed the license to
- BSD.
+ eventually released as an open source project on March 18th 2011 under a
+ new name and the Apache 2 license. This license is incompatible with GPL v2
+ and after being asked nicely by a representative of Mozilla Google have
+ changed the license to BSD.
 
 Google's code is written in C with a lot of C++. Some of the more interesting
  features that rely on C++ appear to have been elided from the open source
  version of Snappy.
+
+As of April 8th (http://code.google.com/p/snappy/source/detail?r=27)
+ Google Snappy has a C API, but it just calls the C++ code. My port is pure C.
+Google used exported symbols that collided with mine, so I switched all my
+ symbols from snappy_* to csnappy_*. I probably should have done that from the
+ start.
 
 Goals:
 To get the codebase into a shape that can be accepted into the mainline
