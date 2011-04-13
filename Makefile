@@ -19,7 +19,7 @@ cl_test: cl_tester
 	rm -f afifo
 	mkfifo afifo
 	./cl_tester -c <testdata/urls.10K | ./cl_tester -d -c > afifo &
-	diff testdata/urls.10K afifo && echo "compress-decompress restores original"
+	diff -u testdata/urls.10K afifo && echo "compress-decompress restores original"
 	rm -f afifo
 	./cl_tester -S d && echo "decompression is safe"
 	./cl_tester -S c || echo "compression overwrites out buffer"
@@ -34,11 +34,6 @@ libcsnappy.so: csnappy_compress.c csnappy_decompress.c csnappy_internal.h csnapp
 	$(CC) $(CFLAGS) -fPIC -DPIC -c -o csnappy_compress.o csnappy_compress.c
 	$(CC) $(CFLAGS) -fPIC -DPIC -c -o csnappy_decompress.o csnappy_decompress.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -o $@ csnappy_compress.o csnappy_decompress.o
-
-cl_tester_simple: cl_tester.c csnappy_simple.c libcsnappy.so
-	$(CC) -std=c99 -Wall -pedantic -O2 -g -c -o csnappy_simple.o csnappy_simple.c
-	$(CC) -std=c99 -Wall -pedantic -O2 -g -D_GNU_SOURCE -c -o cl_tester.o cl_tester.c
-	$(CC) $(LDFLAGS) -o cl_tester cl_tester.o csnappy_simple.o libcsnappy.so
 
 libcsnappy_simple: csnappy_compress.c csnappy_internal.h csnappy_internal_userspace.h
 	$(CC) $(CFLAGS) -fPIC -DPIC -c -o csnappy_compress.o csnappy_compress.c
