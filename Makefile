@@ -41,7 +41,7 @@ cl_tester_simple: cl_tester.c csnappy_simple.c libcsnappy.so
 	$(CC) $(LDFLAGS) -o cl_tester cl_tester.o csnappy_simple.o libcsnappy.so
 
 libcsnappy_simple: csnappy_compress.c csnappy_internal.h csnappy_internal_userspace.h
-	$(CC) -std=c99 -Wall -pedantic -O2 -g -fPIC -DPIC -c -o csnappy_compress.o csnappy_compress.c
+	$(CC) $(CFLAGS) -fPIC -DPIC -c -o csnappy_compress.o csnappy_compress.c
 	$(CC) -std=c99 -Wall -pedantic -O2 -g -fPIC -DPIC -c -o csnappy_simple.o csnappy_simple.c
 	$(CC) $(LDFLAGS) -shared -o libcsnappy.so csnappy_compress.o csnappy_simple.o
 
