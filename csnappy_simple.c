@@ -152,7 +152,6 @@ int csnappy_decompress_noheader(
 	char * const dst_max = dst + *dst_len;
 	uint32_t length, offset;
 	uint8_t opcode;
-	*dst_len = 0;
 	main_loop:
 	while (src_remaining) {
 		opcode = READ_LE_BYTES(1);
@@ -165,7 +164,6 @@ int csnappy_decompress_noheader(
 				return CSNAPPY_E_OUTPUT_OVERRUN;
 			memcpy(dst, src, length);
 			dst += length;
-			*dst_len += length;
 			src += length;
 			src_remaining -= length;
 			goto main_loop;
@@ -184,10 +182,10 @@ int csnappy_decompress_noheader(
 			return CSNAPPY_E_DATA_MALFORMED;
 		if (length > dst_max - dst)
 			return CSNAPPY_E_OUTPUT_OVERRUN;
-		*dst_len += length;
 		const char *copy_src = dst - offset;
 		do *dst++ = *copy_src++; while (--length);
 	}
+	*dst_len = dst - dst_base;
 	return CSNAPPY_E_OK;
 }
 
