@@ -110,16 +110,21 @@ typedef unsigned __int64 uint64_t;
 #include <byteswap.h>
 #endif
 
-static inline uint16_t cpu_to_le16(uint32_t v) { return bswap_16(v); }
-static inline uint16_t le16_to_cpu(uint16_t v) { return bswap_16(v); }
-static inline uint32_t cpu_to_le32(uint32_t v) { return bswap_32(v); }
-static inline uint32_t le32_to_cpu(uint32_t v) { return bswap_32(v); }
+static inline uint32_t get_unaligned_le32(const void *p)
+{
+	return bswap_32(UNALIGNED_LOAD32(p));
+}
+
+static inline void put_unaligned_le16(uint16_t val, void *p)
+{
+	uint8_t *pp = (uint8_t*)p;
+	*pp++ = val;
+	*pp++ = val >> 8;
+}
 
 #else /* !defined(__BIG_ENDIAN) */
-#define cpu_to_le16(x) (x)
-#define le16_to_cpu(x) (x)
-#define cpu_to_le32(x) (x)
-#define le32_to_cpu(x) (x)
+#define get_unaligned_le32(p)		(*(const uint32_t*)(p))
+#define put_unaligned_le16(v, p)	*(uint16_t*)(p) = (uint16_t)(v)
 #endif /* !defined(__BIG_ENDIAN) */
 
 

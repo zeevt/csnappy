@@ -148,6 +148,7 @@ int do_selftest_compression(void)
 	return 0;
 }
 
+static const char fake[] = "\x32\xc4\x66\x6f\x6f\x6f\x6f\x6f\x6f";
 int do_selftest_decompression(void)
 {
 	char *obuf, *ibuf, *workmem;
@@ -183,14 +184,33 @@ int do_selftest_decompression(void)
 	if (mprotect(obuf + PAGE_SIZE, PAGE_SIZE, PROT_NONE))
 		handle_error("mprotect");
 	ret = csnappy_decompress(ibuf, ilen, obuf, olen);
-	if (ret != CSNAPPY_E_OUTPUT_INSUF)
+	if (ret != CSNAPPY_E_OUTPUT_INSUF) {
 		fprintf(stderr, "snappy_decompress returned %d.\n", ret);
+		exit(EXIT_FAILURE);
+	}
 	ret = csnappy_decompress_noheader(ibuf + 2, ilen - 2, obuf, &olen);
-	if (ret != CSNAPPY_E_OUTPUT_OVERRUN)
+	if (ret != CSNAPPY_E_OUTPUT_OVERRUN) {
 		fprintf(stderr, "csnappy_decompress_noheader returned %d.\n", ret);
+		exit(EXIT_FAILURE);
+	}
 	free(ibuf);
 	if (munmap(obuf, PAGE_SIZE * 2))
 		handle_error("munmap");
+
+	olen = 50;
+	if (!(obuf = (char*)malloc(olen)))
+		handle_error("malloc");
+	ret = csnappy_decompress(fake, 9, obuf, olen);
+	if (ret == CSNAPPY_E_OK) {
+		fprintf(stderr, "csnappy_decompress, stream cut off mid literal: %d\n", ret);
+		exit(EXIT_FAILURE);
+	}
+	ret = csnappy_decompress_noheader(fake + 1, 8, obuf, &olen);
+	if (ret == CSNAPPY_E_OK) {
+		fprintf(stderr, "csnappy_decompress_noheader, stream cut off mid literal: %d\n", ret);
+		exit(EXIT_FAILURE);
+	}
+	free(obuf);
 	return 0;
 }
 

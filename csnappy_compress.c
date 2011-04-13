@@ -292,7 +292,7 @@ EmitCopyLessThan64(char* op, int offset, int len)
 		*op++ = offset & 0xff;
 	} else {
 		*op++ = COPY_2_BYTE_OFFSET | ((len-1) << 2);
-		UNALIGNED_STORE16(op, cpu_to_le16(offset));
+		put_unaligned_le16(offset, op);
 		op += 2;
 	}
 	return op;
