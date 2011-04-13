@@ -8,21 +8,6 @@ ZLIB:    [b 1M] bytes 125179 ->  48897 39.1%  comp   9.0 MB/s  uncomp 131.0 MB/s
 LZO:     [b 1M] bytes 125179 ->  73217 58.5%  comp  59.6 MB/s  uncomp 202.1 MB/s
 CSNAPPY: [b 1M] bytes 125179 ->  80207 64.1%  comp 163.6 MB/s  uncomp 387.7 MB/s
 SNAPPY:  [b 4M] bytes 125179 ->  80207 64.1%  comp 164.6 MB/s  uncomp 378.9 MB/s
-testdata/baddata1.snappy                 :
-ZLIB:    [b 1M] bytes  27512 ->  22941 83.4%  comp  19.5 MB/s  uncomp  99.0 MB/s
-LZO:     [b 1M] bytes  27512 ->  26487 96.3%  comp  28.4 MB/s  uncomp 566.8 MB/s
-CSNAPPY: [b 1M] bytes  27512 ->  26675 97.0%  comp 362.4 MB/s  uncomp 1768.6 MB/s
-SNAPPY:  [b 4M] bytes  27512 ->  26675 97.0%  comp 362.2 MB/s  uncomp 1662.7 MB/s
-testdata/baddata2.snappy                 :
-ZLIB:    [b 1M] bytes  27483 ->  23023 83.8%  comp  19.5 MB/s  uncomp  98.4 MB/s
-LZO:     [b 1M] bytes  27483 ->  26528 96.5%  comp  28.4 MB/s  uncomp 580.3 MB/s
-CSNAPPY: [b 1M] bytes  27483 ->  26724 97.2%  comp 405.2 MB/s  uncomp 1976.3 MB/s
-SNAPPY:  [b 4M] bytes  27483 ->  26724 97.2%  comp 404.3 MB/s  uncomp 1927.6 MB/s
-testdata/baddata3.snappy                 :
-ZLIB:    [b 1M] bytes  28384 ->  23718 83.6%  comp  19.4 MB/s  uncomp  98.7 MB/s
-LZO:     [b 1M] bytes  28384 ->  27380 96.5%  comp  28.1 MB/s  uncomp 569.6 MB/s
-CSNAPPY: [b 1M] bytes  28384 ->  27476 96.8%  comp 324.1 MB/s  uncomp 1572.8 MB/s
-SNAPPY:  [b 4M] bytes  28384 ->  27476 96.8%  comp 322.7 MB/s  uncomp 1514.3 MB/s
 testdata/cp.html                         :
 ZLIB:    [b 1M] bytes  24603 ->   7961 32.4%  comp  23.0 MB/s  uncomp 142.0 MB/s
 LZO:     [b 1M] bytes  24603 ->  11621 47.2%  comp  66.8 MB/s  uncomp 300.0 MB/s
