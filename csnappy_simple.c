@@ -162,6 +162,8 @@ int csnappy_decompress_noheader(
 				length = READ_LE_BYTES(length - 60) + 1;
 			if (length > dst_max - dst)
 				return CSNAPPY_E_OUTPUT_OVERRUN;
+			if (length > src_remaining)
+				return CSNAPPY_E_DATA_MALFORMED;
 			memcpy(dst, src, length);
 			dst += length;
 			src += length;
