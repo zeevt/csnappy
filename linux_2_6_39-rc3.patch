@@ -32,7 +32,7 @@ index 3bec4db..67e4204 100644
 +	depends on SNAPPY_DECOMPRESS
 +endchoice
 diff --git a/drivers/staging/zram/zram_drv.c b/drivers/staging/zram/zram_drv.c
-index aab4ec4..8933a9e 100644
+index aab4ec4..0afb17b 100644
 --- a/drivers/staging/zram/zram_drv.c
 +++ b/drivers/staging/zram/zram_drv.c
 @@ -29,12 +29,49 @@
@@ -104,7 +104,15 @@ index aab4ec4..8933a9e 100644
  			pr_err("Decompression failed! err=%d, page=%u\n",
  				ret, index);
  			zram_stat64_inc(zram, &zram->stats.failed_reads);
-@@ -319,18 +356,11 @@ static void zram_write(struct zram *zram, struct bio *bio)
+@@ -289,7 +326,6 @@ static void zram_write(struct zram *zram, struct bio *bio)
+ 	index = bio->bi_sector >> SECTORS_PER_PAGE_SHIFT;
+ 
+ 	bio_for_each_segment(bvec, bio, i) {
+-		int ret;
+ 		u32 offset;
+ 		size_t clen;
+ 		struct zobj_header *zheader;
+@@ -319,18 +355,11 @@ static void zram_write(struct zram *zram, struct bio *bio)
  			continue;
  		}
  
@@ -125,7 +133,7 @@ index aab4ec4..8933a9e 100644
  		/*
  		 * Page is incompressible. Store it as-is (uncompressed)
  		 * since we do not want to return too many disk write
-@@ -511,7 +541,7 @@ int zram_init_device(struct zram *zram)
+@@ -511,7 +540,7 @@ int zram_init_device(struct zram *zram)
  
  	zram_set_disksize(zram, totalram_pages << PAGE_SHIFT);
  
