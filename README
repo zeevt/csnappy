@@ -9,7 +9,7 @@ Because Google did not provide a bitstream description or documentation
  optimizations, I have written an English description and minimal C code to
  decompress Snappy streams. It passes all tests and appears to be about twice
  slower than the optimized version, but it is small both as source
- (csnappy_simple.c) and as machine code (743 bytes with -O2, 574 with -Os).
+ (csnappy_simple.c) and as machine code.
 
 Snappy was written at Google some time in 2005 under the name Zippy and
  eventually released as an open source project on March 18th 2011 under a
@@ -35,7 +35,7 @@ Same for support in Squashfs and other parts of the kernel that currently
  support LZO.
 
 Results:
-To this end I cut out or port to plain ANSI C the necessary code and headers.
+To this end I cut out or ported to plain ANSI C the necessary code and headers.
 To cause less confusion, I call this project (and files) csnappy.
 The work is not yet complete.
 The API looks right, but I welcome comments.
@@ -56,8 +56,8 @@ http://search.cpan.org/dist/Compress-Snappy/
 https://github.com/gray/compress-snappy
 
 Patch for upstream snappy tester is available.
-Patch for linux kernel (2.6.38.2) is available. I usually update this after
- updating the code, but sometimes it takes longer.
+Patch for linux kernel (2.6.39-rc3) is available. Sometimes code in linux patch
+ is not in sync with code in csnappy_* files. This gets fixed in a few hours.
 
 Benchmark (zramtest2.sh) creates a zram block device, an ext4 filesystem on it,
  fixes the filesystem not to think it's on a striped RAID device with a single
