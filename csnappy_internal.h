@@ -59,7 +59,10 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #define UNALIGNED_STORE32(_p, _val)	put_unaligned((_val), (uint32_t*)(_p))
 #define UNALIGNED_STORE64(_p, _val)	put_unaligned((_val), (uint64_t*)(_p))
 
-#endif /* !__KERNEL__ */
+#define FindLSBSetNonZero(n)		__builtin_ctz(n)
+#define FindLSBSetNonZero64(n)		__builtin_ctzll(n)
+
+#endif /* __KERNEL__ */
 
 #define DCHECK_EQ(a, b)	DCHECK(((a) == (b)))
 #define DCHECK_NE(a, b)	DCHECK(((a) != (b)))

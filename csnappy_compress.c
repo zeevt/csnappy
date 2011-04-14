@@ -42,50 +42,6 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #endif
 
 
-#if defined(HAVE_BUILTIN_CTZ) || defined(__KERNEL__)
-
-static inline int FindLSBSetNonZero(uint32_t n)
-{
-	return __builtin_ctz(n);
-}
-
-static inline int FindLSBSetNonZero64(uint64_t n)
-{
-	return __builtin_ctzll(n);
-}
-
-#else /* Portable versions. */
-
-static inline int FindLSBSetNonZero(uint32_t n)
-{
-	int rc = 31, i, shift;
-	uint32_t x;
-	for (i = 4, shift = 1 << 4; i >= 0; --i) {
-		x = n << shift;
-		if (x != 0) {
-			n = x;
-			rc -= shift;
-		}
-		shift >>= 1;
-	}
-	return rc;
-}
-
-/* FindLSBSetNonZero64() is defined in terms of FindLSBSetNonZero(). */
-static inline int FindLSBSetNonZero64(uint64_t n)
-{
-	const uint32_t bottombits = (uint32_t)n;
-	if (bottombits == 0) {
-		/* Bottom bits are zero, so scan in top bits */
-		return 32 + FindLSBSetNonZero((uint32_t)(n >> 32));
-	} else {
-		return FindLSBSetNonZero(bottombits);
-	}
-}
-
-#endif /* End portable versions. */
-
-
 static inline char*
 encode_varint32(char *sptr, uint32_t v)
 {
