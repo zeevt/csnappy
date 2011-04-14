@@ -1,20 +1,20 @@
 diff --git a/drivers/staging/zram/Kconfig b/drivers/staging/zram/Kconfig
-index da079f8..50ad124 100644
+index 3bec4db..67e4204 100644
 --- a/drivers/staging/zram/Kconfig
 +++ b/drivers/staging/zram/Kconfig
-@@ -1,8 +1,6 @@
- config ZRAM
+@@ -6,8 +6,6 @@ config ZRAM
  	tristate "Compressed RAM block device support"
- 	depends on BLOCK
+ 	depends on BLOCK && SYSFS
+ 	select XVMALLOC
 -	select LZO_COMPRESS
 -	select LZO_DECOMPRESS
  	default n
  	help
  	  Creates virtual block devices called /dev/zramX (X = 0, 1, ...).
-@@ -15,3 +13,19 @@ config ZRAM
- 
- 	  See zram.txt for more information.
- 	  Project home: http://compcache.googlecode.com/
+@@ -28,3 +26,19 @@ config ZRAM_DEBUG
+ 	help
+ 	  This option adds additional debugging code to the compressed
+ 	  RAM block device driver.
 +
 +choice ZRAM_COMPRESS
 +	prompt "compression method"
@@ -32,10 +32,10 @@ index da079f8..50ad124 100644
 +	depends on SNAPPY_DECOMPRESS
 +endchoice
 diff --git a/drivers/staging/zram/zram_drv.c b/drivers/staging/zram/zram_drv.c
-index 4bd8cbd..27419c4 100644
+index aab4ec4..8933a9e 100644
 --- a/drivers/staging/zram/zram_drv.c
 +++ b/drivers/staging/zram/zram_drv.c
-@@ -25,12 +25,49 @@
+@@ -29,12 +29,49 @@
  #include <linux/genhd.h>
  #include <linux/highmem.h>
  #include <linux/slab.h>
@@ -86,7 +86,7 @@ index 4bd8cbd..27419c4 100644
  /* Globals */
  static int zram_major;
  struct zram *devices;
-@@ -253,7 +290,7 @@ static int zram_read(struct zram *zram, struct bio *bio)
+@@ -251,7 +288,7 @@ static void zram_read(struct zram *zram, struct bio *bio)
  		cmem = kmap_atomic(zram->table[index].page, KM_USER1) +
  				zram->table[index].offset;
  
@@ -95,7 +95,7 @@ index 4bd8cbd..27419c4 100644
  			cmem + sizeof(*zheader),
  			xv_get_object_size(cmem) - sizeof(*zheader),
  			user_mem, &clen);
-@@ -262,7 +299,7 @@ static int zram_read(struct zram *zram, struct bio *bio)
+@@ -260,7 +297,7 @@ static void zram_read(struct zram *zram, struct bio *bio)
  		kunmap_atomic(cmem, KM_USER1);
  
  		/* Should NEVER happen. Return bio error if it does. */
@@ -104,7 +104,7 @@ index 4bd8cbd..27419c4 100644
  			pr_err("Decompression failed! err=%d, page=%u\n",
  				ret, index);
  			zram_stat64_inc(zram, &zram->stats.failed_reads);
-@@ -327,18 +364,11 @@ static int zram_write(struct zram *zram, struct bio *bio)
+@@ -319,18 +356,11 @@ static void zram_write(struct zram *zram, struct bio *bio)
  			continue;
  		}
  
@@ -125,7 +125,7 @@ index 4bd8cbd..27419c4 100644
  		/*
  		 * Page is incompressible. Store it as-is (uncompressed)
  		 * since we do not want to return too many disk write
-@@ -516,7 +546,7 @@ int zram_init_device(struct zram *zram)
+@@ -511,7 +541,7 @@ int zram_init_device(struct zram *zram)
  
  	zram_set_disksize(zram, totalram_pages << PAGE_SHIFT);
  
@@ -254,10 +254,10 @@ index 0000000..e53230f
 +
 +#endif
 diff --git a/lib/Kconfig b/lib/Kconfig
-index 0ee67e0..04923c4 100644
+index 9c10e38..f73a7ec 100644
 --- a/lib/Kconfig
 +++ b/lib/Kconfig
-@@ -101,13 +101,19 @@ config ZLIB_DEFLATE
+@@ -104,13 +104,19 @@ config ZLIB_DEFLATE
  	tristate
  
  config LZO_COMPRESS
@@ -280,11 +280,11 @@ index 0ee67e0..04923c4 100644
  # These all provide a common interface (hence the apparent duplication with
  # ZLIB_INFLATE; DECOMPRESS_GZIP is just a wrapper.)
 diff --git a/lib/Makefile b/lib/Makefile
-index cbb774f..e34d8fc 100644
+index ef0f285..ebf7f2d 100644
 --- a/lib/Makefile
 +++ b/lib/Makefile
-@@ -69,6 +69,8 @@ obj-$(CONFIG_ZLIB_DEFLATE) += zlib_deflate/
- obj-$(CONFIG_REED_SOLOMON) += reed_solomon/
+@@ -72,6 +72,8 @@ obj-$(CONFIG_REED_SOLOMON) += reed_solomon/
+ obj-$(CONFIG_BCH) += bch.o
  obj-$(CONFIG_LZO_COMPRESS) += lzo/
  obj-$(CONFIG_LZO_DECOMPRESS) += lzo/
 +obj-$(CONFIG_SNAPPY_COMPRESS) += snappy/
