@@ -58,8 +58,8 @@ https://github.com/gray/compress-snappy
 
 Patch for upstream snappy tester is available (snappy_tester.patch).
 Patches for linux kernel (2.6.39-rc3) are available:
-linux_2_6_39-rc3_csnappy.patch
-linux_2_6_39-rc3_zram.patch
+linux_2_6_39-rc3_csnappy_v2.patch
+linux_2_6_39-rc3_zram_v2.patch
 Sometimes code in linux patch is not in sync with code in csnappy_* files,
  but this gets fixed in a few hours.
 
