@@ -35,7 +35,7 @@ csnappy_max_compressed_length(uint32_t source_len) __attribute__((const));
  */
 char*
 csnappy_compress_fragment(
-	const char* input,
+	const char *input,
 	const uint32_t input_length,
 	char *output,
 	void *working_memory,
@@ -65,25 +65,33 @@ csnappy_compress(
  * Reads header of compressed data to get stored length of uncompressed data.
  * REQUIRES: start points to compressed data.
  * REQUIRES: n is length of available compressed data.
- * 
- * Returns a number above 0 for success and below 0 for error.
+ *
+ * Returns SNAPPY_E_HEADER_BAD on error.
+ * Returns number of bytes read from input on success.
  * Stores decoded length into *result.
  */
 int
-csnappy_get_uncompressed_length(const char *start, uint32_t n, uint32_t *result);
+csnappy_get_uncompressed_length(
+	const char *start,
+	uint32_t n,
+	uint32_t *result);
 
 /*
  * Safely decompresses all data from array "src" of length "src_len" containing
  * entire compressed stream (with header) into array "dst" of size "dst_len".
  * REQUIRES: dst_len is at least csnappy_get_uncompressed_length(...).
- * 
+ *
  * Iff sucessful, returns CSNAPPY_E_OK.
  * If recorded length in header is greater than dst_len, returns
  *  CSNAPPY_E_OUTPUT_INSUF.
  * If compressed data is malformed, does not write more than dst_len into dst.
  */
 int
-csnappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_len);
+csnappy_decompress(
+	const char *src,
+	uint32_t src_len,
+	char *dst,
+	uint32_t dst_len);
 
 /*
  * Safely decompresses stream src_len bytes long read from src to dst.
@@ -94,7 +102,11 @@ csnappy_decompress(const char *src, uint32_t src_len, char *dst, uint32_t dst_le
  * Iff sucessful, returns CSNAPPY_E_OK.
  */
 int
-csnappy_decompress_noheader(const char *src, uint32_t src_len, char *dst, uint32_t *dst_len);
+csnappy_decompress_noheader(
+	const char *src,
+	uint32_t src_len,
+	char *dst,
+	uint32_t *dst_len);
 
 /*
  * Return values (< 0 = Error)

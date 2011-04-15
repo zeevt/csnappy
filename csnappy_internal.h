@@ -47,17 +47,19 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #include <asm/unaligned.h>
 
 #ifdef DEBUG
-#define DCHECK(cond)	if (!(cond)) printk(KERN_DEBUG "assert failed @ %s:%i\n", __FILE__, __LINE__)
+#define DCHECK(cond)	if (!(cond)) \
+			printk(KERN_DEBUG "assert failed @ %s:%i\n", \
+				__FILE__, __LINE__)
 #else
 #define DCHECK(cond)
 #endif
 
-#define UNALIGNED_LOAD16(_p)		get_unaligned((const uint16_t*)(_p))
-#define UNALIGNED_LOAD32(_p)		get_unaligned((const uint32_t*)(_p))
-#define UNALIGNED_LOAD64(_p)		get_unaligned((const uint64_t*)(_p))
-#define UNALIGNED_STORE16(_p, _val)	put_unaligned((_val), (uint16_t*)(_p))
-#define UNALIGNED_STORE32(_p, _val)	put_unaligned((_val), (uint32_t*)(_p))
-#define UNALIGNED_STORE64(_p, _val)	put_unaligned((_val), (uint64_t*)(_p))
+#define UNALIGNED_LOAD16(_p)		get_unaligned((const uint16_t *)(_p))
+#define UNALIGNED_LOAD32(_p)		get_unaligned((const uint32_t *)(_p))
+#define UNALIGNED_LOAD64(_p)		get_unaligned((const uint64_t *)(_p))
+#define UNALIGNED_STORE16(_p, _val)	put_unaligned((_val), (uint16_t *)(_p))
+#define UNALIGNED_STORE32(_p, _val)	put_unaligned((_val), (uint32_t *)(_p))
+#define UNALIGNED_STORE64(_p, _val)	put_unaligned((_val), (uint64_t *)(_p))
 
 #define FindLSBSetNonZero(n)		__builtin_ctz(n)
 #define FindLSBSetNonZero64(n)		__builtin_ctzll(n)
@@ -72,10 +74,10 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #define DCHECK_LE(a, b)	DCHECK(((a) <= (b)))
 
 enum {
-  LITERAL = 0,
-  COPY_1_BYTE_OFFSET = 1,  /* 3 bit length + 3 bits of offset in opcode */
-  COPY_2_BYTE_OFFSET = 2,
-  COPY_4_BYTE_OFFSET = 3
+	LITERAL = 0,
+	COPY_1_BYTE_OFFSET = 1,  /* 3 bit length + 3 bits of offset in opcode */
+	COPY_2_BYTE_OFFSET = 2,
+	COPY_4_BYTE_OFFSET = 3
 };
 
 #endif  /* CSNAPPY_INTERNAL_H_ */

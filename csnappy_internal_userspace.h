@@ -61,7 +61,6 @@ typedef unsigned __int64 uint64_t;
 /* Static prediction hints. */
 #define likely(x)	__builtin_expect(!!(x), 1)
 #define unlikely(x)	__builtin_expect(!!(x), 0)
-#define noinline	__attribute__((noinline))
 
 
 #ifdef DEBUG

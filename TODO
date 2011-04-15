@@ -1,5 +1,4 @@
 * test with debug config option
-* move snappy to staging directory (?)
 * a bit better userspace makefile
 * rename CamelCase symbols to linux_style (?)
 * test on 32bit x86 qemu
