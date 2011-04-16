@@ -40,6 +40,9 @@ libcsnappy_simple: csnappy_compress.c csnappy_internal.h csnappy_internal_usersp
 	$(CC) -std=c99 -Wall -pedantic -O2 -g -fPIC -DPIC -c -o csnappy_simple.o csnappy_simple.c
 	$(CC) $(LDFLAGS) -shared -o libcsnappy.so csnappy_compress.o csnappy_simple.o
 
+block_compressor: block_compressor.c libcsnappy.so
+	$(CC) -std=gnu99 -Wall -O0 -ggdb -o $@ $< libcsnappy.so -llzo2
+
 install: csnappy.h libcsnappy.so
 	cp csnappy.h /usr/include/
 	cp libcsnappy.so /usr/lib/
