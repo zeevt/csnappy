@@ -22,7 +22,7 @@ cl_test: cl_tester
 	diff -u testdata/urls.10K afifo && echo "compress-decompress restores original"
 	rm -f afifo
 	./cl_tester -S d && echo "decompression is safe"
-	./cl_tester -S c || echo "compression overwrites out buffer"
+	./cl_tester -S c
 
 check_leaks: cl_tester
 	valgrind --leak-check=full --show-reachable=yes ./cl_tester -d -c <testdata/urls.10K.snappy >/dev/null
