@@ -73,10 +73,10 @@ typedef unsigned __int64 uint64_t;
 /* kernel defined either one or the other, stdlib defines both */
 #if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
 # if defined(__BYTE_ORDER)
-#  if __BYTE_ORDER == 1234
+#  if __BYTE_ORDER == __LITTLE_ENDIAN
 #   undef __BIG_ENDIAN
 #   warning forecefully undefined __BIG_ENDIAN based on __BYTE_ORDER
-#  elif __BYTE_ORDER == 4321
+#  elif __BYTE_ORDER == __BIG_ENDIAN
 #   undef __LITTLE_ENDIAN
 #   warning forecefully undefined __LITTLE_ENDIAN based on __BYTE_ORDER
 #  endif
