@@ -75,10 +75,10 @@ typedef unsigned __int64 uint64_t;
 # if defined(__BYTE_ORDER)
 #  if __BYTE_ORDER == 1234
 #   undef __BIG_ENDIAN
-#   warning forecefully undefned __BIG_ENDIAN based on __BYTE_ORDER
+#   warning forecefully undefined __BIG_ENDIAN based on __BYTE_ORDER
 #  elif __BYTE_ORDER == 4321
 #   undef __LITTLE_ENDIAN
-#   warning forecefully undefned __LITTLE_ENDIAN based on __BYTE_ORDER
+#   warning forecefully undefined __LITTLE_ENDIAN based on __BYTE_ORDER
 #  endif
 # endif
 #endif
