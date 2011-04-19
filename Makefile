@@ -43,11 +43,25 @@ block_compressor: block_compressor.c libcsnappy.so
 	$(CC) -std=gnu99 -Wall -O2 -g -o $@ $< libcsnappy.so -llzo2 -lz
 
 test_block_compressor: block_compressor
-	for testfile in /usr/lib64/chromium-browser/chrome ; do \
-	for method in lzo snappy zlib ; do \
-	LD_LIBRARY_PATH=. ./block_compressor -c $$method $$testfile itmp > /dev/null ;\
+	for testfile in \
+		/usr/lib64/chromium-browser/chrome \
+		/usr/lib64/qt4/libQtWebKit.so.4.7.2 \
+		/usr/lib64/llvm/libLLVM-2.9.so \
+		/usr/lib64/xulrunner-2.0/libxul.so \
+		/usr/libexec/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/cc1 \
+		/usr/lib64/libnvidia-glcore.so.270.41.03 \
+		/usr/lib64/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/libgcj.so.12.0.0 \
+		/usr/lib64/libwireshark.so.0.0.1 \
+		/usr/share/icons/oxygen/icon-theme.cache \
+	; do \
+	echo compressing: $$testfile ; \
+	for method in snappy lzo zlib ; do \
+	LD_LIBRARY_PATH=. ./block_compressor -c $$method $$testfile itmp ;\
 	LD_LIBRARY_PATH=. ./block_compressor -c $$method -d itmp otmp > /dev/null ;\
 	diff -u $$testfile otmp ;\
+	echo "ratio:" \
+	$$(stat --printf %s itmp) \* 100 / $$(stat --printf %s $$testfile) " = " \
+	$$(expr $$(stat --printf %s itmp) \* 100 / $$(stat --printf %s $$testfile)) "%" ;\
 	rm -f itmp otmp ;\
 	done ; \
 	done ;

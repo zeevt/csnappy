@@ -189,6 +189,8 @@ enum {
 	ZLIB = 2,
 };
 
+static const char* const COMPRESSORS[] = { "LZO", "SNAPPY", "ZLIB" };
+
 typedef void (*compress_fn)(const char *src, uint32_t ilen, char *dst,
 				uint32_t *dst_len, void *opaque);
 
@@ -223,6 +225,7 @@ static int do_compress(int method, FILE *ifile, FILE *ofile)
 	union intbytes intbuf;
 	char *ibuf, *obuf, *opaque;
 	compress_fn compress = compressors[method].compress;
+	uint32_t counts[3] = { 0 };
 	if (!(ibuf = malloc(PAGE_SIZE)))
 		handle_error("malloc");
 	if (!(obuf = malloc(2 * PAGE_SIZE)))
@@ -236,6 +239,8 @@ static int do_compress(int method, FILE *ifile, FILE *ofile)
 	long nr_pages = DIV_ROUND_UP(input_length, PAGE_SIZE);
 	if (nr_pages > UINT32_MAX)
 		handle_error("inut file too big");
+	printf("compressor: %s\n", COMPRESSORS[method]);
+	printf("#pages: %u\n", (unsigned)nr_pages);
 	intbuf.i = (uint32_t)nr_pages;
 	if (fwrite(&intbuf.c, 1, 4, ofile) < 4)
 		handle_error("fwrite");
@@ -251,11 +256,15 @@ static int do_compress(int method, FILE *ifile, FILE *ofile)
 			handle_error("fread");
 		uint32_t olen = 2 * PAGE_SIZE;
 		compress(ibuf, ilen, obuf, &olen, opaque);
-		printf("%d -> %d\n", ilen, olen);
 		char *wbuf = obuf;
 		if (olen >= ilen) {
 			olen = ilen;
 			wbuf = ibuf;
+			counts[2]++;
+		} else if (olen > (PAGE_SIZE / 2)) {
+			counts[1]++;
+		} else {
+			counts[0]++;
 		}
 		if (fseek(ofile, (i + 1) * sizeof(uint32_t), SEEK_SET) == -1)
 			handle_error("fseek");
@@ -272,6 +281,8 @@ static int do_compress(int method, FILE *ifile, FILE *ofile)
 	free(obuf);
 	free(ibuf);
 	compressors[method].compress_free(opaque);
+	printf("> 100%%\t:%u\n> 50%%\t:%u\n<= 50%%\t:%u\n",
+	       counts[2],counts[1],counts[0]);
 	return 0;
 }
 
@@ -332,11 +343,11 @@ int main(int argc, char * const argv[])
 	while((c = getopt(argc, argv, "c:d")) != -1) {
 		switch (c) {
 		case 'c':
-			if (strcasecmp(optarg, "lzo") == 0)
+			if (strcasecmp(optarg, COMPRESSORS[LZO]) == 0)
 				compressor = LZO;
-			else if (strcasecmp(optarg, "snappy") == 0)
+			else if (strcasecmp(optarg, COMPRESSORS[SNAPPY]) == 0)
 				compressor = SNAPPY;
-			else if (strcasecmp(optarg, "zlib") == 0)
+			else if (strcasecmp(optarg, COMPRESSORS[ZLIB]) == 0)
 				compressor = ZLIB;
 			else
 				goto usage;
