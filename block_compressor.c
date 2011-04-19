@@ -1,9 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include <strings.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <time.h>
 #include <lzo/lzo1x.h>
 #include "csnappy.h"
 #include <zlib.h>
@@ -215,6 +217,25 @@ static const struct compressor_funcs compressors[] = {
 		zlib_decompress_init, zlib_decompress_free, zlib_decompress},
 };
 
+#define ONE_BILLION 1000000000
+static void add_time_diff(struct timespec *total,
+			struct timespec *start,
+			struct timespec *end)
+{
+	end->tv_sec -= start->tv_sec;
+	end->tv_nsec -= start->tv_nsec;
+	if (end->tv_nsec < 0) {
+		end->tv_sec--;
+		end->tv_nsec += ONE_BILLION;
+	}
+	total->tv_sec += end->tv_sec;
+	total->tv_nsec += end->tv_nsec;
+	if (total->tv_nsec > ONE_BILLION) {
+		total->tv_sec++;
+		total->tv_nsec -= ONE_BILLION;
+	}
+}
+
 union intbytes {
 	uint32_t i;
 	char c[4];
@@ -226,6 +247,8 @@ static int do_compress(int method, FILE *ifile, FILE *ofile)
 	char *ibuf, *obuf, *opaque;
 	compress_fn compress = compressors[method].compress;
 	uint32_t counts[3] = { 0 };
+	struct timespec t1, t2, elapsed;
+	memset(&elapsed, 0, sizeof(elapsed));
 	if (!(ibuf = malloc(PAGE_SIZE)))
 		handle_error("malloc");
 	if (!(obuf = malloc(2 * PAGE_SIZE)))
@@ -255,7 +278,9 @@ static int do_compress(int method, FILE *ifile, FILE *ofile)
 		if (ilen < PAGE_SIZE && !feof(ifile))
 			handle_error("fread");
 		uint32_t olen = 2 * PAGE_SIZE;
+		clock_gettime(CLOCK_MONOTONIC, &t1);
 		compress(ibuf, ilen, obuf, &olen, opaque);
+		clock_gettime(CLOCK_MONOTONIC, &t2);
 		char *wbuf = obuf;
 		if (olen >= ilen) {
 			olen = ilen;
@@ -275,14 +300,17 @@ static int do_compress(int method, FILE *ifile, FILE *ofile)
 			handle_error("fseek");
 		if (fwrite(wbuf, 1, olen, ofile) < olen)
 			handle_error("fwrite");
+		add_time_diff(&elapsed, &t1, &t2);
 	}
 	fclose(ofile);
 	fclose(ifile);
 	free(obuf);
 	free(ibuf);
 	compressors[method].compress_free(opaque);
-	printf("> 100%%\t:%u\n> 50%%\t:%u\n<= 50%%\t:%u\n",
-	       counts[2],counts[1],counts[0]);
+	printf("> 100%%\t:%u\n> 50%%\t:%u\n<= 50%%\t:%u\n"
+		"%d.%09ld seconds\n",
+		counts[2],counts[1],counts[0],
+		(int)elapsed.tv_sec, elapsed.tv_nsec);
 	return 0;
 }
 

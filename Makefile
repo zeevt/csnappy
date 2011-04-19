@@ -40,7 +40,7 @@ libcsnappy_simple: csnappy_compress.c csnappy_internal.h csnappy_internal_usersp
 	$(CC) $(LDFLAGS) -shared -o libcsnappy.so csnappy_compress.o csnappy_simple.o
 
 block_compressor: block_compressor.c libcsnappy.so
-	$(CC) -std=gnu99 -Wall -O2 -g -o $@ $< libcsnappy.so -llzo2 -lz
+	$(CC) -std=gnu99 -Wall -O2 -g -o $@ $< libcsnappy.so -llzo2 -lz -lrt
 
 test_block_compressor: block_compressor
 	for testfile in \
@@ -60,7 +60,7 @@ test_block_compressor: block_compressor
 	LD_LIBRARY_PATH=. ./block_compressor -c $$method -d itmp otmp > /dev/null ;\
 	diff -u $$testfile otmp ;\
 	echo "ratio:" \
-	$$(stat --printf %s itmp) \* 100 / $$(stat --printf %s $$testfile) " = " \
+	$$(stat --printf %s itmp) \* 100 / $$(stat --printf %s $$testfile) "=" \
 	$$(expr $$(stat --printf %s itmp) \* 100 / $$(stat --printf %s $$testfile)) "%" ;\
 	rm -f itmp otmp ;\
 	done ; \
