@@ -213,13 +213,14 @@ static const struct compressor_funcs compressors[] = {
 		zlib_decompress_init, zlib_decompress_free, zlib_decompress},
 };
 
+union intbytes {
+	uint32_t i;
+	char c[4];
+};
 
 static int do_compress(int method, FILE *ifile, FILE *ofile)
 {
-	union intbytes {
-		uint32_t i;
-		char c[4];
-	} intbuf;
+	union intbytes intbuf;
 	char *ibuf, *obuf, *opaque;
 	compress_fn compress = compressors[method].compress;
 	if (!(ibuf = malloc(PAGE_SIZE)))
@@ -276,10 +277,7 @@ static int do_compress(int method, FILE *ifile, FILE *ofile)
 
 static int do_decompress(int method, FILE *ifile, FILE *ofile)
 {
-	union intbytes {
-		uint32_t i;
-		char c[4];
-	} intbuf;
+	union intbytes intbuf;
 	char *ibuf, *obuf, *opaque;
 	decompress_fn decompress = compressors[method].decompress;
 	uint64_t ipos;
