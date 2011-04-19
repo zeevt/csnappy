@@ -42,6 +42,16 @@ libcsnappy_simple: csnappy_compress.c csnappy_internal.h csnappy_internal_usersp
 block_compressor: block_compressor.c libcsnappy.so
 	$(CC) -std=gnu99 -Wall -O2 -g -o $@ $< libcsnappy.so -llzo2 -lz
 
+test_block_compressor: block_compressor
+	for testfile in /usr/lib64/chromium-browser/chrome ; do \
+	for method in lzo snappy zlib ; do \
+	LD_LIBRARY_PATH=. ./block_compressor -c $$method $$testfile itmp > /dev/null ;\
+	LD_LIBRARY_PATH=. ./block_compressor -c $$method -d itmp otmp > /dev/null ;\
+	diff -u $$testfile otmp ;\
+	rm -f itmp otmp ;\
+	done ; \
+	done ;
+
 install: csnappy.h libcsnappy.so
 	cp csnappy.h /usr/include/
 	cp libcsnappy.so /usr/lib/
