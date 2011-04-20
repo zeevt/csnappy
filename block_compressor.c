@@ -96,10 +96,11 @@ static int lzo_decompress(
 }
 
 
+#define WMSIZE_ORDER	((PAGE_SHIFT > 14) ? (15) : (PAGE_SHIFT+1))
 static void* snappy_compress_init(void)
 {
 	char *workmem;
-	if (!(workmem = malloc(CSNAPPY_WORKMEM_BYTES)))
+	if (!(workmem = malloc(1 << WMSIZE_ORDER)))
 		handle_error("malloc");
 	return workmem;
 }
@@ -118,7 +119,7 @@ static void snappy_compress(
 {
 	char *end;
 	end = csnappy_compress_fragment(src, ilen, dst,
-		opaque, CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
+		opaque, WMSIZE_ORDER);
 	*dst_len = end - dst;
 }
 
