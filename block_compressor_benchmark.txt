@@ -1,0 +1,220 @@
+for testfile in \
+	/usr/lib64/chromium-browser/chrome \
+	/usr/lib64/qt4/libQtWebKit.so.4.7.2 \
+	/usr/lib64/llvm/libLLVM-2.9.so \
+	/usr/lib64/xulrunner-2.0/libxul.so \
+	/usr/libexec/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/cc1 \
+	/usr/lib64/libnvidia-glcore.so.270.41.03 \
+	/usr/lib64/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/libgcj.so.12.0.0 \
+	/usr/lib64/libwireshark.so.0.0.1 \
+	/usr/share/icons/oxygen/icon-theme.cache \
+; do \
+echo compressing: $testfile ; \
+for method in snappy lzo zlib ; do \
+LD_LIBRARY_PATH=. ./block_compressor -c $method $testfile itmp ;\
+LD_LIBRARY_PATH=. ./block_compressor -c $method -d itmp otmp > /dev/null ;\
+diff -u $testfile otmp ;\
+echo "ratio:" \
+$(stat --printf %s itmp) \* 100 / $(stat --printf %s $testfile) "=" \
+$(expr $(stat --printf %s itmp) \* 100 / $(stat --printf %s $testfile)) "%" ;\
+rm -f itmp otmp ;\
+done ; \
+done ;
+compressing: /usr/lib64/chromium-browser/chrome
+compressor: SNAPPY
+#pages: 10446
+> 100%	:347
+> 50%	:8495
+<= 50%	:1604
+0.200508756 seconds
+ratio: 28071339 * 100 / 42786240 = 65 %
+compressor: LZO
+#pages: 10446
+> 100%	:24
+> 50%	:8511
+<= 50%	:1911
+0.798752578 seconds
+ratio: 26761827 * 100 / 42786240 = 62 %
+compressor: ZLIB
+#pages: 10446
+> 100%	:0
+> 50%	:5939
+<= 50%	:4507
+2.397532115 seconds
+ratio: 21124457 * 100 / 42786240 = 49 %
+compressing: /usr/lib64/qt4/libQtWebKit.so.4.7.2
+compressor: SNAPPY
+#pages: 5342
+> 100%	:218
+> 50%	:3391
+<= 50%	:1733
+0.091910906 seconds
+ratio: 13225606 * 100 / 21877760 = 60 %
+compressor: LZO
+#pages: 5342
+> 100%	:131
+> 50%	:3366
+<= 50%	:1845
+0.362236202 seconds
+ratio: 12444462 * 100 / 21877760 = 56 %
+compressor: ZLIB
+#pages: 5342
+> 100%	:142
+> 50%	:2464
+<= 50%	:2736
+1.146268405 seconds
+ratio: 9903402 * 100 / 21877760 = 45 %
+compressing: /usr/lib64/llvm/libLLVM-2.9.so
+compressor: SNAPPY
+#pages: 3472
+> 100%	:44
+> 50%	:2381
+<= 50%	:1047
+0.063129589 seconds
+ratio: 8444320 * 100 / 14219992 = 59 %
+compressor: LZO
+#pages: 3472
+> 100%	:13
+> 50%	:2361
+<= 50%	:1098
+0.236206024 seconds
+ratio: 8036711 * 100 / 14219992 = 56 %
+compressor: ZLIB
+#pages: 3472
+> 100%	:12
+> 50%	:1728
+<= 50%	:1732
+0.766326612 seconds
+ratio: 6221694 * 100 / 14219992 = 43 %
+compressing: /usr/lib64/xulrunner-2.0/libxul.so
+compressor: SNAPPY
+#pages: 7187
+> 100%	:228
+> 50%	:4413
+<= 50%	:2546
+0.124460470 seconds
+ratio: 17372287 * 100 / 29433888 = 59 %
+compressor: LZO
+#pages: 7187
+> 100%	:41
+> 50%	:4405
+<= 50%	:2741
+0.458236972 seconds
+ratio: 16135393 * 100 / 29433888 = 54 %
+compressor: ZLIB
+#pages: 7187
+> 100%	:1
+> 50%	:3021
+<= 50%	:4165
+1.611078147 seconds
+ratio: 12248775 * 100 / 29433888 = 41 %
+compressing: /usr/libexec/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/cc1
+compressor: SNAPPY
+#pages: 3608
+> 100%	:67
+> 50%	:2153
+<= 50%	:1388
+0.064014378 seconds
+ratio: 7689076 * 100 / 14775120 = 52 %
+compressor: LZO
+#pages: 3608
+> 100%	:8
+> 50%	:1995
+<= 50%	:1605
+0.214896110 seconds
+ratio: 7301883 * 100 / 14775120 = 49 %
+compressor: ZLIB
+#pages: 3608
+> 100%	:2
+> 50%	:317
+<= 50%	:3289
+0.788363656 seconds
+ratio: 5495499 * 100 / 14775120 = 37 %
+compressing: /usr/lib64/libnvidia-glcore.so.270.41.03
+compressor: SNAPPY
+#pages: 6710
+> 100%	:73
+> 50%	:2604
+<= 50%	:4033
+0.098767950 seconds
+ratio: 12804544 * 100 / 27481328 = 46 %
+compressor: LZO
+#pages: 6710
+> 100%	:1
+> 50%	:2464
+<= 50%	:4245
+0.327805172 seconds
+ratio: 11732970 * 100 / 27481328 = 42 %
+compressor: ZLIB
+#pages: 6710
+> 100%	:1
+> 50%	:1633
+<= 50%	:5076
+1.213986579 seconds
+ratio: 8641291 * 100 / 27481328 = 31 %
+compressing: /usr/lib64/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/libgcj.so.12.0.0
+compressor: SNAPPY
+#pages: 15133
+> 100%	:190
+> 50%	:5010
+<= 50%	:9933
+0.226434632 seconds
+ratio: 26999411 * 100 / 61982968 = 43 %
+compressor: LZO
+#pages: 15133
+> 100%	:86
+> 50%	:4212
+<= 50%	:10835
+0.674823180 seconds
+ratio: 24672939 * 100 / 61982968 = 39 %
+compressor: ZLIB
+#pages: 15133
+> 100%	:63
+> 50%	:317
+<= 50%	:14753
+2.939966218 seconds
+ratio: 18266665 * 100 / 61982968 = 29 %
+compressing: /usr/lib64/libwireshark.so.0.0.1
+compressor: SNAPPY
+#pages: 11340
+> 100%	:70
+> 50%	:2942
+<= 50%	:8328
+0.154483182 seconds
+ratio: 19501813 * 100 / 46445496 = 41 %
+compressor: LZO
+#pages: 11340
+> 100%	:8
+> 50%	:2581
+<= 50%	:8751
+0.464174931 seconds
+ratio: 17438678 * 100 / 46445496 = 37 %
+compressor: ZLIB
+#pages: 11340
+> 100%	:1
+> 50%	:1235
+<= 50%	:10104
+2.017636438 seconds
+ratio: 12561769 * 100 / 46445496 = 27 %
+compressing: /usr/share/icons/oxygen/icon-theme.cache
+compressor: SNAPPY
+#pages: 43411
+> 100%	:0
+> 50%	:7602
+<= 50%	:35809
+0.531568965 seconds
+ratio: 59965735 * 100 / 177810480 = 33 %
+compressor: LZO
+#pages: 43411
+> 100%	:0
+> 50%	:7143
+<= 50%	:36268
+1.788634182 seconds
+ratio: 57342887 * 100 / 177810480 = 32 %
+compressor: ZLIB
+#pages: 43411
+> 100%	:0
+> 50%	:2464
+<= 50%	:40947
+6.257964665 seconds
+ratio: 42305375 * 100 / 177810480 = 23 %

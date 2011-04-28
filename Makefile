@@ -15,20 +15,19 @@ cl_tester: cl_tester.c csnappy.h libcsnappy.so
 	$(CC) $(CFLAGS) $(LDFLAGS) -D_GNU_SOURCE -o $@ $< libcsnappy.so
 
 cl_test: cl_tester
-	export LD_LIBRARY_PATH=.
 	rm -f afifo
 	mkfifo afifo
-	./cl_tester -c <testdata/urls.10K | ./cl_tester -d -c > afifo &
+	LD_LIBRARY_PATH=. ./cl_tester -c <testdata/urls.10K | LD_LIBRARY_PATH=. ./cl_tester -d -c > afifo &
 	diff -u testdata/urls.10K afifo && echo "compress-decompress restores original"
 	rm -f afifo
-	./cl_tester -S d && echo "decompression is safe"
-	./cl_tester -S c || echo "compression overwrites out buffer"
+	LD_LIBRARY_PATH=. ./cl_tester -S d && echo "decompression is safe"
+	LD_LIBRARY_PATH=. ./cl_tester -S c
 
 check_leaks: cl_tester
-	valgrind --leak-check=full --show-reachable=yes ./cl_tester -d -c <testdata/urls.10K.snappy >/dev/null
-	valgrind --leak-check=full --show-reachable=yes ./cl_tester -d -c <testdata/baddata3.snappy >/dev/null || true
-	valgrind --leak-check=full --show-reachable=yes ./cl_tester -c <testdata/urls.10K >/dev/null
-	valgrind --leak-check=full --show-reachable=yes ./cl_tester -S d
+	LD_LIBRARY_PATH=. valgrind --leak-check=full --show-reachable=yes ./cl_tester -d -c <testdata/urls.10K.snappy >/dev/null
+	LD_LIBRARY_PATH=. valgrind --leak-check=full --show-reachable=yes ./cl_tester -d -c <testdata/baddata3.snappy >/dev/null || true
+	LD_LIBRARY_PATH=. valgrind --leak-check=full --show-reachable=yes ./cl_tester -c <testdata/urls.10K >/dev/null
+	LD_LIBRARY_PATH=. valgrind --leak-check=full --show-reachable=yes ./cl_tester -S d
 
 libcsnappy.so: csnappy_compress.c csnappy_decompress.c csnappy_internal.h csnappy_internal_userspace.h
 	$(CC) $(CFLAGS) -fPIC -DPIC -c -o csnappy_compress.o csnappy_compress.c
@@ -41,7 +40,31 @@ libcsnappy_simple: csnappy_compress.c csnappy_internal.h csnappy_internal_usersp
 	$(CC) $(LDFLAGS) -shared -o libcsnappy.so csnappy_compress.o csnappy_simple.o
 
 block_compressor: block_compressor.c libcsnappy.so
-	$(CC) -std=gnu99 -Wall -O0 -ggdb -o $@ $< libcsnappy.so -llzo2
+	$(CC) -std=gnu99 -Wall -O2 -g -o $@ $< libcsnappy.so -llzo2 -lz -lrt
+
+test_block_compressor: block_compressor
+	for testfile in \
+		/usr/lib64/chromium-browser/chrome \
+		/usr/lib64/qt4/libQtWebKit.so.4.7.2 \
+		/usr/lib64/llvm/libLLVM-2.9.so \
+		/usr/lib64/xulrunner-2.0/libxul.so \
+		/usr/libexec/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/cc1 \
+		/usr/lib64/libnvidia-glcore.so.270.41.03 \
+		/usr/lib64/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/libgcj.so.12.0.0 \
+		/usr/lib64/libwireshark.so.0.0.1 \
+		/usr/share/icons/oxygen/icon-theme.cache \
+	; do \
+	echo compressing: $$testfile ; \
+	for method in snappy lzo zlib ; do \
+	LD_LIBRARY_PATH=. ./block_compressor -c $$method $$testfile itmp ;\
+	LD_LIBRARY_PATH=. ./block_compressor -c $$method -d itmp otmp > /dev/null ;\
+	diff -u $$testfile otmp ;\
+	echo "ratio:" \
+	$$(stat --printf %s itmp) \* 100 / $$(stat --printf %s $$testfile) "=" \
+	$$(expr $$(stat --printf %s itmp) \* 100 / $$(stat --printf %s $$testfile)) "%" ;\
+	rm -f itmp otmp ;\
+	done ; \
+	done ;
 
 install: csnappy.h libcsnappy.so
 	cp csnappy.h /usr/include/

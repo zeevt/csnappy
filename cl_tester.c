@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <signal.h>
 #include "csnappy.h"
 #ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON
@@ -114,8 +115,17 @@ static int do_compress(FILE *ifile, FILE *ofile)
 #define handle_error(msg) \
   do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
+
+static void segfault_handler(int signum) {
+	if (signum == SIGSEGV) {
+		printf("compression overwrites out buffer\n");
+		exit(EXIT_SUCCESS);
+	}
+}
+
 int do_selftest_compression(void)
 {
+	struct sigaction sa;
 	char *obuf, *ibuf, *workmem;
 	FILE *ifile;
 	long PAGE_SIZE = sysconf(_SC_PAGE_SIZE);
@@ -139,13 +149,18 @@ int do_selftest_compression(void)
 		handle_error("fclose");
 	if (!(workmem = (char*)malloc(CSNAPPY_WORKMEM_BYTES)))
 		handle_error("malloc");
+	sa.sa_handler = segfault_handler;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sigaction(SIGSEGV, &sa, NULL);
 	csnappy_compress(ibuf, ilen, obuf, &olen,
 			workmem, CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO);
+	fprintf(stderr, "ERROR: csnappy_compress did not segfault when should have!\n");
 	if (munmap(obuf, PAGE_SIZE * 2))
 		handle_error("munmap");
 	free(workmem);
 	free(ibuf);
-	return 0;
+	return EXIT_FAILURE;
 }
 
 static const char fake[] = "\x32\xc4\x66\x6f\x6f\x6f\x6f\x6f\x6f";
