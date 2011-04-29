@@ -70,62 +70,6 @@ typedef unsigned __int64 uint64_t;
 #define DCHECK(cond)
 #endif
 
-/* kernel defined either one or the other, stdlib defines both */
-#if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
-# if defined(__BYTE_ORDER)
-#  if __BYTE_ORDER == __LITTLE_ENDIAN
-#   undef __BIG_ENDIAN
-#   warning forecefully undefined __BIG_ENDIAN based on __BYTE_ORDER
-#  elif __BYTE_ORDER == __BIG_ENDIAN
-#   undef __LITTLE_ENDIAN
-#   warning forecefully undefined __LITTLE_ENDIAN based on __BYTE_ORDER
-#  endif
-# endif
-#endif
-
-#if !defined(__LITTLE_ENDIAN) && !defined(__BIG_ENDIAN)
-# error __LITTLE_ENDIAN or __BIG_ENDIAN must be defined
-#endif
-#if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
-# error __LITTLE_ENDIAN or __BIG_ENDIAN must be defined, not both!
-#endif
-
-/* Convert to little-endian storage, opposite of network format. */
-#if defined(__BIG_ENDIAN)
-
-/* The following guarantees declaration of the byte swap functions. */
-#ifdef _MSC_VER
-#include <stdlib.h>
-#define bswap_16(x) _byteswap_ushort(x)
-#define bswap_32(x) _byteswap_ulong(x)
-#define bswap_64(x) _byteswap_uint64(x)
-#elif defined(__APPLE__)
-/* Mac OS X / Darwin features */
-#include <libkern/OSByteOrder.h>
-#define bswap_16(x) OSSwapInt16(x)
-#define bswap_32(x) OSSwapInt32(x)
-#define bswap_64(x) OSSwapInt64(x)
-#else
-#include <byteswap.h>
-#endif
-
-static inline uint32_t get_unaligned_le32(const void *p)
-{
-	return bswap_32(UNALIGNED_LOAD32(p));
-}
-
-static inline void put_unaligned_le16(uint16_t val, void *p)
-{
-	uint8_t *pp = (uint8_t*)p;
-	*pp++ = val;
-	*pp++ = val >> 8;
-}
-
-#else /* !defined(__BIG_ENDIAN) */
-#define get_unaligned_le32(p)		(*(const uint32_t*)(p))
-#define put_unaligned_le16(v, p)	*(uint16_t*)(p) = (uint16_t)(v)
-#endif /* !defined(__BIG_ENDIAN) */
-
 
 /* Potentially unaligned loads and stores. */
 
@@ -181,6 +125,63 @@ static inline void UNALIGNED_STORE64(void *p, uint64_t v)
 }
 
 #endif /* !(x86 || powerpc) */
+
+
+/* kernel defined either one or the other, stdlib defines both */
+#if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
+# if defined(__BYTE_ORDER)
+#  if __BYTE_ORDER == __LITTLE_ENDIAN
+#   undef __BIG_ENDIAN
+#   warning forecefully undefined __BIG_ENDIAN based on __BYTE_ORDER
+#  elif __BYTE_ORDER == __BIG_ENDIAN
+#   undef __LITTLE_ENDIAN
+#   warning forecefully undefined __LITTLE_ENDIAN based on __BYTE_ORDER
+#  endif
+# endif
+#endif
+
+#if !defined(__LITTLE_ENDIAN) && !defined(__BIG_ENDIAN)
+# error __LITTLE_ENDIAN or __BIG_ENDIAN must be defined
+#endif
+#if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
+# error __LITTLE_ENDIAN or __BIG_ENDIAN must be defined, not both!
+#endif
+
+/* Convert to little-endian storage, opposite of network format. */
+#if defined(__BIG_ENDIAN)
+
+/* The following guarantees declaration of the byte swap functions. */
+#ifdef _MSC_VER
+#include <stdlib.h>
+#define bswap_16(x) _byteswap_ushort(x)
+#define bswap_32(x) _byteswap_ulong(x)
+#define bswap_64(x) _byteswap_uint64(x)
+#elif defined(__APPLE__)
+/* Mac OS X / Darwin features */
+#include <libkern/OSByteOrder.h>
+#define bswap_16(x) OSSwapInt16(x)
+#define bswap_32(x) OSSwapInt32(x)
+#define bswap_64(x) OSSwapInt64(x)
+#else
+#include <byteswap.h>
+#endif
+
+static inline uint32_t get_unaligned_le32(const void *p)
+{
+	return bswap_32(UNALIGNED_LOAD32(p));
+}
+
+static inline void put_unaligned_le16(uint16_t val, void *p)
+{
+	uint8_t *pp = (uint8_t*)p;
+	*pp++ = val;
+	*pp++ = val >> 8;
+}
+
+#else /* !defined(__BIG_ENDIAN) */
+#define get_unaligned_le32(p)		(*(const uint32_t*)(p))
+#define put_unaligned_le16(v, p)	*(uint16_t*)(p) = (uint16_t)(v)
+#endif /* !defined(__BIG_ENDIAN) */
 
 
 #if defined(HAVE_BUILTIN_CTZ)
