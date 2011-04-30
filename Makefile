@@ -1,7 +1,7 @@
 
 OPT_FLAGS = -g -O2 -DNDEBUG -fomit-frame-pointer
 DBG_FLAGS = -ggdb -O0 -DDEBUG
-CFLAGS := -std=gnu89 -Wall -pedantic -D__LITTLE_ENDIAN -DHAVE_BUILTIN_CTZ
+CFLAGS := -std=gnu89 -Wall -pedantic -DHAVE_BUILTIN_CTZ
 ifeq (${DEBUG},yes)
 CFLAGS += $(DBG_FLAGS)
 else
@@ -9,7 +9,14 @@ CFLAGS += $(OPT_FLAGS)
 endif
 LDFLAGS = -Wl,-O1
 
-all: cl_test check_leaks
+all: test
+
+endianness_file: endianness.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o endianness $<
+	./endianness > $@
+-include endianness_file
+
+test: cl_test check_leaks
 
 cl_tester: cl_tester.c csnappy.h libcsnappy.so
 	$(CC) $(CFLAGS) $(LDFLAGS) -D_GNU_SOURCE -o $@ $< libcsnappy.so
@@ -48,9 +55,9 @@ test_block_compressor: block_compressor
 		/usr/lib64/qt4/libQtWebKit.so.4.7.2 \
 		/usr/lib64/llvm/libLLVM-2.9.so \
 		/usr/lib64/xulrunner-2.0/libxul.so \
-		/usr/libexec/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/cc1 \
+		/usr/libexec/gcc/x86_64-pc-linux-gnu/4.6.1-pre9999/cc1 \
 		/usr/lib64/libnvidia-glcore.so.270.41.03 \
-		/usr/lib64/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/libgcj.so.12.0.0 \
+		/usr/lib64/gcc/x86_64-pc-linux-gnu/4.6.1-pre9999/libgcj.so.12.0.0 \
 		/usr/lib64/libwireshark.so.0.0.1 \
 		/usr/share/icons/oxygen/icon-theme.cache \
 	; do \
@@ -75,4 +82,6 @@ uninstall:
 	rm -f /usr/lib/libcsnappy.so
 
 clean:
-	rm -f *.o *_debug libcsnappy.so cl_tester
+	rm -f *.o *_debug libcsnappy.so cl_tester endianness endianness_file
+
+.PHONY: .REGEN clean all
