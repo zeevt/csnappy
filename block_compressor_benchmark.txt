@@ -3,9 +3,9 @@ for testfile in \
 	/usr/lib64/qt4/libQtWebKit.so.4.7.2 \
 	/usr/lib64/llvm/libLLVM-2.9.so \
 	/usr/lib64/xulrunner-2.0/libxul.so \
-	/usr/libexec/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/cc1 \
+	/usr/libexec/gcc/x86_64-pc-linux-gnu/4.6.1-pre9999/cc1 \
 	/usr/lib64/libnvidia-glcore.so.270.41.03 \
-	/usr/lib64/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/libgcj.so.12.0.0 \
+	/usr/lib64/gcc/x86_64-pc-linux-gnu/4.6.1-pre9999/libgcj.so.12.0.0 \
 	/usr/lib64/libwireshark.so.0.0.1 \
 	/usr/share/icons/oxygen/icon-theme.cache \
 ; do \
@@ -22,199 +22,199 @@ done ; \
 done ;
 compressing: /usr/lib64/chromium-browser/chrome
 compressor: SNAPPY
-#pages: 10446
-> 100%	:347
-> 50%	:8495
-<= 50%	:1604
-0.200508756 seconds
-ratio: 28071339 * 100 / 42786240 = 65 %
+#pages: 10392
+> 100%	:341
+> 50%	:8445
+<= 50%	:1606
+0.174652181 seconds
+ratio: 27932299 * 100 / 42562848 = 65 %
 compressor: LZO
-#pages: 10446
-> 100%	:24
-> 50%	:8511
-<= 50%	:1911
-0.798752578 seconds
-ratio: 26761827 * 100 / 42786240 = 62 %
+#pages: 10392
+> 100%	:495
+> 50%	:8080
+<= 50%	:1817
+0.220447504 seconds
+ratio: 27150908 * 100 / 42562848 = 63 %
 compressor: ZLIB
-#pages: 10446
+#pages: 10392
 > 100%	:0
-> 50%	:5939
-<= 50%	:4507
-2.397532115 seconds
-ratio: 21124457 * 100 / 42786240 = 49 %
+> 50%	:5800
+<= 50%	:4592
+2.395360610 seconds
+ratio: 20904235 * 100 / 42562848 = 49 %
 compressing: /usr/lib64/qt4/libQtWebKit.so.4.7.2
 compressor: SNAPPY
 #pages: 5342
-> 100%	:218
-> 50%	:3391
-<= 50%	:1733
-0.091910906 seconds
-ratio: 13225606 * 100 / 21877760 = 60 %
+> 100%	:219
+> 50%	:3405
+<= 50%	:1718
+0.080079531 seconds
+ratio: 13290800 * 100 / 21877760 = 60 %
 compressor: LZO
 #pages: 5342
-> 100%	:131
-> 50%	:3366
-<= 50%	:1845
-0.362236202 seconds
-ratio: 12444462 * 100 / 21877760 = 56 %
+> 100%	:272
+> 50%	:3281
+<= 50%	:1789
+0.100200702 seconds
+ratio: 12737811 * 100 / 21877760 = 58 %
 compressor: ZLIB
 #pages: 5342
 > 100%	:142
 > 50%	:2464
 <= 50%	:2736
-1.146268405 seconds
+1.147235809 seconds
 ratio: 9903402 * 100 / 21877760 = 45 %
 compressing: /usr/lib64/llvm/libLLVM-2.9.so
 compressor: SNAPPY
 #pages: 3472
 > 100%	:44
-> 50%	:2381
-<= 50%	:1047
-0.063129589 seconds
-ratio: 8444320 * 100 / 14219992 = 59 %
+> 50%	:2384
+<= 50%	:1044
+0.055121943 seconds
+ratio: 8493554 * 100 / 14219992 = 59 %
 compressor: LZO
 #pages: 3472
-> 100%	:13
-> 50%	:2361
-<= 50%	:1098
-0.236206024 seconds
-ratio: 8036711 * 100 / 14219992 = 56 %
+> 100%	:53
+> 50%	:2355
+<= 50%	:1064
+0.068662186 seconds
+ratio: 8213334 * 100 / 14219992 = 57 %
 compressor: ZLIB
 #pages: 3472
 > 100%	:12
 > 50%	:1728
 <= 50%	:1732
-0.766326612 seconds
+0.766150075 seconds
 ratio: 6221694 * 100 / 14219992 = 43 %
 compressing: /usr/lib64/xulrunner-2.0/libxul.so
 compressor: SNAPPY
 #pages: 7187
-> 100%	:228
-> 50%	:4413
-<= 50%	:2546
-0.124460470 seconds
-ratio: 17372287 * 100 / 29433888 = 59 %
+> 100%	:229
+> 50%	:4432
+<= 50%	:2526
+0.108149693 seconds
+ratio: 17455680 * 100 / 29433888 = 59 %
 compressor: LZO
 #pages: 7187
-> 100%	:41
-> 50%	:4405
-<= 50%	:2741
-0.458236972 seconds
-ratio: 16135393 * 100 / 29433888 = 54 %
+> 100%	:253
+> 50%	:4287
+<= 50%	:2647
+0.135244136 seconds
+ratio: 16596460 * 100 / 29433888 = 56 %
 compressor: ZLIB
 #pages: 7187
 > 100%	:1
 > 50%	:3021
 <= 50%	:4165
-1.611078147 seconds
+1.610910737 seconds
 ratio: 12248775 * 100 / 29433888 = 41 %
-compressing: /usr/libexec/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/cc1
+compressing: /usr/libexec/gcc/x86_64-pc-linux-gnu/4.6.1-pre9999/cc1
 compressor: SNAPPY
 #pages: 3608
-> 100%	:67
-> 50%	:2153
-<= 50%	:1388
-0.064014378 seconds
-ratio: 7689076 * 100 / 14775120 = 52 %
+> 100%	:68
+> 50%	:2168
+<= 50%	:1372
+0.056032193 seconds
+ratio: 7728033 * 100 / 14775120 = 52 %
 compressor: LZO
 #pages: 3608
-> 100%	:8
-> 50%	:1995
-<= 50%	:1605
-0.214896110 seconds
-ratio: 7301883 * 100 / 14775120 = 49 %
+> 100%	:72
+> 50%	:1975
+<= 50%	:1561
+0.069680830 seconds
+ratio: 7384676 * 100 / 14775120 = 49 %
 compressor: ZLIB
 #pages: 3608
 > 100%	:2
-> 50%	:317
-<= 50%	:3289
-0.788363656 seconds
-ratio: 5495499 * 100 / 14775120 = 37 %
+> 50%	:306
+<= 50%	:3300
+0.789069806 seconds
+ratio: 5493265 * 100 / 14775120 = 37 %
 compressing: /usr/lib64/libnvidia-glcore.so.270.41.03
 compressor: SNAPPY
 #pages: 6710
-> 100%	:73
-> 50%	:2604
-<= 50%	:4033
-0.098767950 seconds
-ratio: 12804544 * 100 / 27481328 = 46 %
+> 100%	:74
+> 50%	:2614
+<= 50%	:4022
+0.084111724 seconds
+ratio: 12860385 * 100 / 27481328 = 46 %
 compressor: LZO
 #pages: 6710
-> 100%	:1
-> 50%	:2464
-<= 50%	:4245
-0.327805172 seconds
-ratio: 11732970 * 100 / 27481328 = 42 %
+> 100%	:89
+> 50%	:2436
+<= 50%	:4185
+0.103006618 seconds
+ratio: 12051888 * 100 / 27481328 = 43 %
 compressor: ZLIB
 #pages: 6710
 > 100%	:1
 > 50%	:1633
 <= 50%	:5076
-1.213986579 seconds
+1.216785009 seconds
 ratio: 8641291 * 100 / 27481328 = 31 %
-compressing: /usr/lib64/gcc/x86_64-pc-linux-gnu/4.6.0-pre9999/libgcj.so.12.0.0
+compressing: /usr/lib64/gcc/x86_64-pc-linux-gnu/4.6.1-pre9999/libgcj.so.12.0.0
 compressor: SNAPPY
 #pages: 15133
 > 100%	:190
-> 50%	:5010
-<= 50%	:9933
-0.226434632 seconds
-ratio: 26999411 * 100 / 61982968 = 43 %
+> 50%	:5105
+<= 50%	:9838
+0.193854352 seconds
+ratio: 27131163 * 100 / 61982968 = 43 %
 compressor: LZO
 #pages: 15133
-> 100%	:86
-> 50%	:4212
-<= 50%	:10835
-0.674823180 seconds
-ratio: 24672939 * 100 / 61982968 = 39 %
+> 100%	:201
+> 50%	:4323
+<= 50%	:10609
+0.235593989 seconds
+ratio: 24944283 * 100 / 61982968 = 40 %
 compressor: ZLIB
 #pages: 15133
 > 100%	:63
 > 50%	:317
 <= 50%	:14753
-2.939966218 seconds
-ratio: 18266665 * 100 / 61982968 = 29 %
+2.943011502 seconds
+ratio: 18266667 * 100 / 61982968 = 29 %
 compressing: /usr/lib64/libwireshark.so.0.0.1
 compressor: SNAPPY
-#pages: 11340
-> 100%	:70
-> 50%	:2942
-<= 50%	:8328
-0.154483182 seconds
-ratio: 19501813 * 100 / 46445496 = 41 %
+#pages: 11341
+> 100%	:64
+> 50%	:2982
+<= 50%	:8295
+0.130238274 seconds
+ratio: 19576418 * 100 / 46449592 = 42 %
 compressor: LZO
-#pages: 11340
-> 100%	:8
-> 50%	:2581
-<= 50%	:8751
-0.464174931 seconds
-ratio: 17438678 * 100 / 46445496 = 37 %
+#pages: 11341
+> 100%	:86
+> 50%	:2565
+<= 50%	:8690
+0.157854033 seconds
+ratio: 17765477 * 100 / 46449592 = 38 %
 compressor: ZLIB
-#pages: 11340
+#pages: 11341
 > 100%	:1
-> 50%	:1235
-<= 50%	:10104
-2.017636438 seconds
-ratio: 12561769 * 100 / 46445496 = 27 %
+> 50%	:1219
+<= 50%	:10121
+2.020140289 seconds
+ratio: 12565102 * 100 / 46449592 = 27 %
 compressing: /usr/share/icons/oxygen/icon-theme.cache
 compressor: SNAPPY
 #pages: 43411
 > 100%	:0
-> 50%	:7602
-<= 50%	:35809
-0.531568965 seconds
-ratio: 59965735 * 100 / 177810480 = 33 %
+> 50%	:7777
+<= 50%	:35634
+0.441581102 seconds
+ratio: 60247441 * 100 / 177810480 = 33 %
 compressor: LZO
 #pages: 43411
-> 100%	:0
-> 50%	:7143
-<= 50%	:36268
-1.788634182 seconds
-ratio: 57342887 * 100 / 177810480 = 32 %
+> 100%	:31
+> 50%	:7801
+<= 50%	:35579
+0.547072992 seconds
+ratio: 59064132 * 100 / 177810480 = 33 %
 compressor: ZLIB
 #pages: 43411
 > 100%	:0
 > 50%	:2464
 <= 50%	:40947
-6.257964665 seconds
+6.256616084 seconds
 ratio: 42305375 * 100 / 177810480 = 23 %
