@@ -1,4 +1,4 @@
-from cStringIO import StringIO
+from OutputBuffer import OutputBuffer
 from struct import unpack as struct_unpack
 
 def read_varint32(f):
@@ -7,20 +7,20 @@ def read_varint32(f):
   while True:
     c = f.read(1)
     if not c:
-      raise ValueError("input not long enough or malformed")
+      raise ValueError("header is malformed")
     b = ord(c)
     v |= (b & 127) << offset
     offset += 7
     if b < 128:
       break
     if offset >= 32:
-      raise ValueError("varint longer than 32 bits or malformed")
+      raise ValueError("header is malformed")
   return v
 
 def read_le_bytes(f, n):
   s = f.read(n)
   if len(s) < n:
-    raise ValueError("input doesn't have %d bytes" % (n,))
+    raise ValueError("data malformed")
   if n == 1:
     return ord(s)
   elif n == 2:
@@ -30,20 +30,25 @@ def read_le_bytes(f, n):
   elif n == 4:
     return struct_unpack("<I", s)[0]
   else:
-    raise ValueError("number fo bytes must be in range [1..4]")
+    raise ValueError("number of bytes must be in range [1..4]")
 
-def snappy_decompress(ifile, ofile):
-  obuf = StringIO()
+def snappy_decompress(ifile, ob):
   expected_olen = read_varint32(ifile)
-  written = 0
   while True:
-    c = read_le_bytes(ifile, 1)
+    s = ifile.read(1)
+    if not s:
+      if ob.isize + ob.num_bufferred_bytes() == expected_olen:
+        ob.flush()
+        break
+      else:
+        raise ValueError("input not consumed")
+    c = ord(s)
     cmd_type = c & 3
     length = (c >> 2) + 1
     if cmd_type == 0:
       if length > 60:
         length = read_le_bytes(ifile, length - 60) + 1
-      obuf.write(ifile.read(length))
+      ob.put_bytes(ifile.read(length))
     else:
       if cmd_type == 1:
         length = ((length - 1) & 7) + 4
@@ -52,26 +57,11 @@ def snappy_decompress(ifile, ofile):
         offset = read_le_bytes(ifile, 2)
       else:
         offset = read_le_bytes(ifile, 4)
-      while length:
-        obuf.seek(-offset, 2)
-        s = obuf.read(1)
-        obuf.seek(0, 2)
-        obuf.write(s)
-        length -= 1
-    if obuf.tell() + written == expected_olen:
-      ofile.write(obuf.getvalue())
-      break
-    if obuf.tell() > 36864:
-      s = obuf.getvalue()
-      to_write = (obuf.tell() - 32678) & ~4095
-      ofile.write(s[:to_write])
-      written += to_write
-      obuf.close()
-      obuf = StringIO()
-      obuf.write(s[to_write:])
+      ob.repeat_chunk(length, offset)
 
 if __name__ == "__main__":
   import sys
   with file(sys.argv[1], "rb") as ifile:
     with file(sys.argv[2], "wb") as ofile:
-      snappy_decompress(ifile, ofile)
+      ob = OutputBuffer(ofile, lambda x,y: y)
+      snappy_decompress(ifile, ob)
