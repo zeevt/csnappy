@@ -37,11 +37,7 @@ def snappy_decompress(ifile, ob):
   while True:
     s = ifile.read(1)
     if not s:
-      if ob.isize + ob.num_bufferred_bytes() == expected_olen:
-        ob.flush()
-        break
-      else:
-        raise ValueError("input not consumed")
+      break
     c = ord(s)
     cmd_type = c & 3
     length = (c >> 2) + 1
@@ -58,6 +54,10 @@ def snappy_decompress(ifile, ob):
       else:
         offset = read_le_bytes(ifile, 4)
       ob.repeat_chunk(length, offset)
+  if ob.isize + ob.num_bufferred_bytes() == expected_olen:
+    ob.flush()
+  else:
+    raise ValueError("input not consumed")
 
 if __name__ == "__main__":
   import sys
