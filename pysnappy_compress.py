@@ -40,26 +40,27 @@ def snappy_emit_backref(f, offset, length):
 N = 4096 # up to 64K is allowed by this encoder
 MIN_LENGTH = 4 # snappy does not support back references with length < 4
 
-def process_block(ofile, s, ilen, wm):
+def snappy_compress_block(ofile, s, ilen, wm):
   literal_start = 0
   i = 1
   while i < ilen - MIN_LENGTH:
-    max_length = 0
-    offset = 0
-    for j in wm[s[i : i + MIN_LENGTH]]:
+    longest_match_length = MIN_LENGTH - 1
+    longest_match_start = 0
+    length_limit = ilen - i
+    hash_chain = wm[s[i : i + MIN_LENGTH].tostring()]
+    for j in hash_chain:
       length = 0
-      length_limit = ilen - i
       while length < length_limit and s[i+length] == s[j+length]:
         length += 1
-      if length >= MIN_LENGTH and length > max_length:
-        max_length = length
-        offset = i - j
-    wm[s[i : i + MIN_LENGTH]].insert(0, i)
-    if max_length:
+      if length > longest_match_length:
+        longest_match_length = length
+        longest_match_start = j
+    hash_chain.insert(0, i)
+    if longest_match_length >= MIN_LENGTH:
       if i - 1 >= literal_start:
         snappy_emit_literal(ofile, s, literal_start, i)
-      snappy_emit_backref(ofile, offset, max_length)
-      i += max_length
+      snappy_emit_backref(ofile, i - longest_match_start, longest_match_length)
+      i += longest_match_length
       literal_start = i
     else:
       i += 1
@@ -81,6 +82,6 @@ with open(sys.argv[1], "rb") as ifile:
       ilen = len(a)
       if not ilen:
         break
-      process_block(ofile, a, ilen, wm)
+      snappy_compress_block(ofile, a, ilen, wm)
       wm.clear()
       del a[:]
