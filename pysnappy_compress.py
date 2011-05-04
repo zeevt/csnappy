@@ -12,17 +12,16 @@ def encode_varint32(f, n):
     f.write(chr(b))
 
 def snappy_emit_literal(f, s, begin, end):
-  l = end - begin - 1
+  l = end - begin - 1 # end is one past the literal, length is encoded -1
   if l < 60:
     f.write(chr(l << 2))
-  else:
-    if l < 256:
-      f.write(chr(60 << 2))
-      f.write(chr(l))
-    else: # a length > 65536 is not supported by this encoder!
-      f.write(chr(61 << 2))
-      f.write(chr(l & 255))
-      f.write(chr(l >> 8))
+  elif l < 256:
+    f.write(chr(240)) # 60 << 2
+    f.write(chr(l))
+  else: # a length > 65536 is not supported by this encoder!
+    f.write(chr(244)) # 61 << 2
+    f.write(chr(l & 255))
+    f.write(chr(l >> 8))
   f.write(s[begin : end])
 
 def snappy_emit_backref(f, offset, length):
@@ -38,7 +37,7 @@ def snappy_emit_backref(f, offset, length):
       length -= curr_len_chunk
 
 N = 4096 # up to 64K is allowed by this encoder
-MIN_LENGTH = 4 # snappy does not support back references with length < 4
+MIN_LENGTH = 4 # snappy back references with length < 4 encodes to 3 bytes
 
 def snappy_compress_block(ofile, s, ilen, wm):
   literal_start = 0
