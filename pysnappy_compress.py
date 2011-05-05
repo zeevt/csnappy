@@ -70,6 +70,7 @@ def snappy_compress_block_dict(ofile, s, ilen, wm = defaultdict(list)):
     snappy_emit_literal(ofile, s, literal_start, ilen)
 
 TABLE_ITEMS_ORDER = 12
+MASK = ((1 << TABLE_ITEMS_ORDER) - 1)
 def snappy_compress_block_table(ofile, s, ilen, \
                                 wm = array('H', [0]*(1 << TABLE_ITEMS_ORDER))):
   """A compressor that uses limited memory, but misses matches"""
@@ -77,8 +78,7 @@ def snappy_compress_block_table(ofile, s, ilen, \
   literal_start = 0
   i = 1
   while i < ilen - MIN_LENGTH:
-    hash_key = ((struct_unpack("<I", s[i : i + MIN_LENGTH])[0] * \
-                0x1e35a7bd) & 0xffffffff) >> (32 - TABLE_ITEMS_ORDER)
+    hash_key = hash(s[i : i + MIN_LENGTH]) & MASK
     match_start = wm[hash_key]
     wm[hash_key] = i
     length = 0
