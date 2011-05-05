@@ -49,7 +49,7 @@ def snappy_compress_block_dict(ofile, s, ilen, wm = defaultdict(list)):
     longest_match_length = MIN_LENGTH - 1
     longest_match_start = 0
     length_limit = ilen - i
-    hash_chain = wm[s[i : i + MIN_LENGTH].tostring()]
+    hash_chain = wm[s[i : i + MIN_LENGTH]]
     for j in hash_chain:
       length = MIN_LENGTH
       while length < length_limit and s[i + length] == s[j + length]:
@@ -77,8 +77,8 @@ def snappy_compress_block_table(ofile, s, ilen, \
   literal_start = 0
   i = 1
   while i < ilen - MIN_LENGTH:
-    hash_key = ((struct_unpack("<I", s[i : i + MIN_LENGTH].tostring())[0] * \
-                           0x1e35a7bd) & 0xffffffff) >> (32 - TABLE_ITEMS_ORDER)
+    hash_key = ((struct_unpack("<I", s[i : i + MIN_LENGTH])[0] * \
+                0x1e35a7bd) & 0xffffffff) >> (32 - TABLE_ITEMS_ORDER)
     match_start = wm[hash_key]
     wm[hash_key] = i
     length = 0
@@ -101,14 +101,8 @@ with open(sys.argv[1], "rb") as ifile:
     ifile.seek(0, os.SEEK_END)
     encode_varint32(ofile, ifile.tell())
     ifile.seek(0, os.SEEK_SET)
-    a = array('B')
     while True:
-      try:
-        a.fromfile(ifile, N)
-      except EOFError:
-        pass
-      ilen = len(a)
-      if not ilen:
+      s = ifile.read(N)
+      if not s:
         break
-      snappy_compress_block_table(ofile, a, ilen)
-      del a[:]
+      snappy_compress_block_table(ofile, s, len(s))
