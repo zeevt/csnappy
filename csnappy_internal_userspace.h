@@ -163,7 +163,7 @@ static inline void UNALIGNED_STORE64(void *p, uint64_t v)
 #define bswap_32(x) OSSwapInt32(x)
 #define bswap_64(x) OSSwapInt64(x)
 #elif defined(__sun)
-#include
+#include <sys/byteorder.h>
 #define bswap_16(x) BSWAP_16(x)
 #define bswap_32(x) BSWAP_32(x)
 #define bswap_64(x) BSWAP_64(x)
