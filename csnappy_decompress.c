@@ -171,20 +171,32 @@ struct SnappyArrayWriter {
 };
 
 static inline int
-SAW__Append(struct SnappyArrayWriter *this,
-	    const char *ip, uint32_t len, int allow_fast_path)
+SAW__AppendFastPath(struct SnappyArrayWriter *this,
+		    const char *ip, uint32_t len)
 {
 	char *op = this->op;
 	const int space_left = this->op_limit - op;
-	/*Fast path, used for the majority (about 90%) of dynamic invocations.*/
-	if (allow_fast_path && len <= 16 && space_left >= 16) {
+	if (likely(space_left >= 16)) {
 		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(ip));
 		UNALIGNED_STORE64(op + 8, UNALIGNED_LOAD64(ip + 8));
 	} else {
-		if (space_left < len)
+		if (unlikely(space_left < len))
 			return CSNAPPY_E_OUTPUT_OVERRUN;
 		memcpy(op, ip, len);
 	}
+	this->op = op + len;
+	return CSNAPPY_E_OK;
+}
+
+static inline int
+SAW__Append(struct SnappyArrayWriter *this,
+	    const char *ip, uint32_t len)
+{
+	char *op = this->op;
+	const int space_left = this->op_limit - op;
+	if (unlikely(space_left < len))
+		return CSNAPPY_E_OUTPUT_OVERRUN;
+	memcpy(op, ip, len);
 	this->op = op + len;
 	return CSNAPPY_E_OK;
 }
@@ -265,23 +277,36 @@ csnappy_decompress_noheader(
 			src = scratch;
 		}
 		opcode = *(const uint8_t *)src++;
-		opword = char_table[opcode];
-		extra_bytes = opword >> 11;
-		trailer = get_unaligned_le32(src) & wordmask[extra_bytes];
-		src += extra_bytes;
-		src_remaining -= 1 + extra_bytes;
-		length = opword & 0xff;
+		src_remaining--;
 		if (opcode & 0x3) {
+			opword = char_table[opcode];
+			extra_bytes = opword >> 11;
+			trailer = get_unaligned_le32(src) & wordmask[extra_bytes];
+			length = opword & 0xff;
+			src += extra_bytes;
+			src_remaining -= extra_bytes;
 			trailer += opword & 0x700;
 			ret = SAW__AppendFromSelf(&writer, trailer, length);
 			if (ret < 0)
 				return ret;
 		} else {
-			length += trailer;
+			length = (opcode >> 2) + 1;
+			if (length <= 16 && src_remaining >= 16) {
+				if ((ret = SAW__AppendFastPath(&writer, src, length)) < 0)
+					return ret;
+				src += length;
+				src_remaining -= length;
+				continue;
+			}
+			if (unlikely(length > 60)) {
+				extra_bytes = length - 60;
+				length = (get_unaligned_le32(src) & wordmask[extra_bytes]) + 1;
+				src += extra_bytes;
+				src_remaining -= extra_bytes;
+			}
 			if (unlikely(src_remaining < length))
 				return CSNAPPY_E_DATA_MALFORMED;
-			ret = src_remaining >= 16;
-			ret = SAW__Append(&writer, src, length, ret);
+			ret = SAW__Append(&writer, src, length);
 			if (ret < 0)
 				return ret;
 			src += length;
