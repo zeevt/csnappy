@@ -83,7 +83,37 @@ typedef unsigned __int64 uint64_t;
 #define UNALIGNED_STORE32(_p, _val) (*(uint32_t*)(_p) = (_val))
 #define UNALIGNED_STORE64(_p, _val) (*(uint64_t*)(_p) = (_val))
 
-#else /* !(x86 || powerpc) */
+/* ARMv6 fakes unaligned access */
+#elif defined(__arm__) && \
+	!defined(__ARM_ARCH_5__) && \
+	!defined(__ARM_ARCH_5T__) && \
+	!defined(__ARM_ARCH_5TE__) && \
+	!defined(__ARM_ARCH_5TEJ__) && \
+	!defined(__ARM_ARCH_6__) && \
+	!defined(__ARM_ARCH_6J__) && \
+	!defined(__ARM_ARCH_6K__) && \
+	!defined(__ARM_ARCH_6Z__) && \
+	!defined(__ARM_ARCH_6ZK__) && \
+	!defined(__ARM_ARCH_6T2__)
+
+#define UNALIGNED_LOAD16(_p) (*(const uint16_t*)(_p))
+#define UNALIGNED_LOAD32(_p) (*(const uint32_t*)(_p))
+#define UNALIGNED_STORE16(_p, _val) (*(uint16_t*)(_p) = (_val))
+#define UNALIGNED_STORE32(_p, _val) (*(uint32_t*)(_p) = (_val))
+
+static inline uint64_t UNALIGNED_LOAD64(const void *p)
+{
+  uint64_t t;
+  memcpy(&t, p, sizeof t);
+  return t;
+}
+
+static inline void UNALIGNED_STORE64(void *p, uint64_t v)
+{
+  memcpy(p, &v, sizeof v);
+}
+
+#else /* !(x86 || powerpc) && !(arm && !armv5 && !armv6) */
 
 /* These functions are provided for architectures that don't support
    unaligned loads and stores. */
@@ -124,7 +154,21 @@ static inline void UNALIGNED_STORE64(void *p, uint64_t v)
   memcpy(p, &v, sizeof v);
 }
 
-#endif /* !(x86 || powerpc) */
+#endif /* !(x86 || powerpc) && !(arm && !armv5 && !armv6) */
+
+/* This can be more efficient than UNALIGNED_LOAD64 + UNALIGNED_STORE64
+   on some platforms, in particular ARM. */
+static inline void UnalignedCopy64(const void *src, void *dst) {
+  if (sizeof(void *) == 8) {
+    UNALIGNED_STORE64(dst, UNALIGNED_LOAD64(src));
+  } else {
+    const char *src_char = (const char *)src;
+    char *dst_char = (char *)dst;
+
+    UNALIGNED_STORE32(dst_char, UNALIGNED_LOAD32(src_char));
+    UNALIGNED_STORE32(dst_char + 4, UNALIGNED_LOAD32(src_char + 4));
+  }
+}
 
 
 /* kernel defined either one or the other, stdlib defines both */

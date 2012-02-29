@@ -150,12 +150,12 @@ static const int kMaxIncrementCopyOverflow = 10;
 static inline void IncrementalCopyFastPath(const char *src, char *op, int len)
 {
 	while (op - src < 8) {
-		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(src));
+		UnalignedCopy64(src, op);
 		len -= op - src;
 		op += op - src;
 	}
 	while (len > 0) {
-		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(src));
+		UnalignedCopy64(src, op);
 		src += 8;
 		op += 8;
 		len -= 8;
@@ -177,8 +177,8 @@ SAW__AppendFastPath(struct SnappyArrayWriter *this,
 	char *op = this->op;
 	const int space_left = this->op_limit - op;
 	if (likely(space_left >= 16)) {
-		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(ip));
-		UNALIGNED_STORE64(op + 8, UNALIGNED_LOAD64(ip + 8));
+		UnalignedCopy64(ip, op);
+		UnalignedCopy64(ip + 8, op + 8);
 	} else {
 		if (unlikely(space_left < len))
 			return CSNAPPY_E_OUTPUT_OVERRUN;
@@ -212,8 +212,8 @@ SAW__AppendFromSelf(struct SnappyArrayWriter *this,
 		return CSNAPPY_E_DATA_MALFORMED;
 	/* Fast path, used for the majority (70-80%) of dynamic invocations. */
 	if (len <= 16 && offset >= 8 && space_left >= 16) {
-		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(op - offset));
-		UNALIGNED_STORE64(op + 8, UNALIGNED_LOAD64(op - offset + 8));
+		UnalignedCopy64(op - offset, op);
+		UnalignedCopy64(op - offset + 8, op + 8);
 	} else if (space_left >= len + kMaxIncrementCopyOverflow) {
 		IncrementalCopyFastPath(op - offset, op, len);
 	} else {
