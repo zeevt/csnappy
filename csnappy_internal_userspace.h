@@ -29,7 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Various stubs for the open-source version of Snappy.
 
-File modified for the Linux Kernel by
+File modified by
 Zeev Tarantov <zeev.tarantov@gmail.com>
 */
 
@@ -72,6 +72,7 @@ typedef unsigned __int64 uint64_t;
 
 
 /* Potentially unaligned loads and stores. */
+/* TODO: use http://code.google.com/p/exfat/source/browse/trunk/libexfat/byteorder.h with permission. */
 
 #if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__)
 
@@ -83,75 +84,89 @@ typedef unsigned __int64 uint64_t;
 #define UNALIGNED_STORE32(_p, _val) (*(uint32_t*)(_p) = (_val))
 #define UNALIGNED_STORE64(_p, _val) (*(uint64_t*)(_p) = (_val))
 
-/* ARMv6 fakes unaligned access */
 #elif defined(__arm__) && \
+	!defined(__ARM_ARCH_4__) && \
+	!defined(__ARM_ARCH_4T__) && /* http://wiki.debian.org/ArmEabiPort#Choice_of_minimum_CPU */ \
+	!defined(__MARM_ARMV4__) && \
+	!defined(_ARMV4I_) && \
 	!defined(__ARM_ARCH_5__) && \
 	!defined(__ARM_ARCH_5T__) && \
+	!defined(__ARM_ARCH_5E__) && \
 	!defined(__ARM_ARCH_5TE__) && \
 	!defined(__ARM_ARCH_5TEJ__) && \
-	!defined(__ARM_ARCH_6__) && \
+	!defined(__MARM_ARMV5__) && \
+	!defined(__ARM_ARCH_6__) && /* ARMv6 fakes unaligned access */ \
 	!defined(__ARM_ARCH_6J__) && \
 	!defined(__ARM_ARCH_6K__) && \
 	!defined(__ARM_ARCH_6Z__) && \
 	!defined(__ARM_ARCH_6ZK__) && \
-	!defined(__ARM_ARCH_6T2__)
+	!defined(__ARM_ARCH_6T2__) && \
+	!defined(__ARMV6__)
 
 #define UNALIGNED_LOAD16(_p) (*(const uint16_t*)(_p))
 #define UNALIGNED_LOAD32(_p) (*(const uint32_t*)(_p))
 #define UNALIGNED_STORE16(_p, _val) (*(uint16_t*)(_p) = (_val))
 #define UNALIGNED_STORE32(_p, _val) (*(uint32_t*)(_p) = (_val))
 
+struct __attribute__((__packed__)) una_u64 { uint64_t x; };
+
 static inline uint64_t UNALIGNED_LOAD64(const void *p)
 {
-  uint64_t t;
-  memcpy(&t, p, sizeof t);
-  return t;
+	const struct una_u64 *ptr = (const struct una_u64 *)p;
+	return ptr->x;
 }
 
 static inline void UNALIGNED_STORE64(void *p, uint64_t v)
 {
-  memcpy(p, &v, sizeof v);
+	struct una_u64 *ptr = (struct una_u64 *)p;
+	ptr->x = v;
 }
 
-#else /* !(x86 || powerpc) && !(arm && !armv5 && !armv6) */
+#else /* !(x86 || powerpc) && !(arm && !old arm architectures) */
 
 /* These functions are provided for architectures that don't support
    unaligned loads and stores. */
 
+#pragma pack(1)
+struct una_u16 { uint16_t x; };
+struct una_u32 { uint32_t x; };
+struct una_u64 { uint64_t x; };
+#pragma pack()
+
 static inline uint16_t UNALIGNED_LOAD16(const void *p)
 {
-  uint16_t t;
-  memcpy(&t, p, sizeof t);
-  return t;
+	const struct una_u16 *ptr = (const struct una_u16 *)p;
+	return ptr->x;
 }
 
 static inline uint32_t UNALIGNED_LOAD32(const void *p)
 {
-  uint32_t t;
-  memcpy(&t, p, sizeof t);
-  return t;
+	const struct una_u32 *ptr = (const struct una_u32 *)p;
+	return ptr->x;
 }
 
 static inline uint64_t UNALIGNED_LOAD64(const void *p)
 {
-  uint64_t t;
-  memcpy(&t, p, sizeof t);
-  return t;
+	const struct una_u64 *ptr = (const struct una_u64 *)p;
+	return ptr->x;
 }
 
 static inline void UNALIGNED_STORE16(void *p, uint16_t v)
 {
-  memcpy(p, &v, sizeof v);
+	struct una_u16 *ptr = (struct una_u16 *)p;
+	ptr->x = v;
 }
 
 static inline void UNALIGNED_STORE32(void *p, uint32_t v)
 {
-  memcpy(p, &v, sizeof v);
+	struct una_u32 *ptr = (struct una_u32 *)p;
+	ptr->x = v;
 }
 
 static inline void UNALIGNED_STORE64(void *p, uint64_t v)
 {
-  memcpy(p, &v, sizeof v);
+	struct una_u64 *ptr = (struct una_u64 *)p;
+	ptr->x = v;
 }
 
 #endif /* !(x86 || powerpc) && !(arm && !armv5 && !armv6) */
