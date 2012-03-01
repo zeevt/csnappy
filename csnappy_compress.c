@@ -283,22 +283,54 @@ EmitCopy(char *op, int offset, int len)
 
 
 /*
- * For 0 <= offset <= 4, GetUint32AtOffset(UNALIGNED_LOAD64(p), offset) will
- * equal UNALIGNED_LOAD32(p + offset).  Motivation: On x86-64 hardware we have
- * empirically found that overlapping loads such as
- *  UNALIGNED_LOAD32(p) ... UNALIGNED_LOAD32(p+1) ... UNALIGNED_LOAD32(p+2)
- * are slower than UNALIGNED_LOAD64(p) followed by shifts and casts to uint32_t.
- */
-static inline uint32_t
-GetUint32AtOffset(uint64_t v, int offset)
-{
-	DCHECK(0 <= offset && offset <= 4);
+For 0 <= offset <= 4, GetUint32AtOffset(GetEightBytesAt(p), offset) will
+equal UNALIGNED_LOAD32(p + offset).  Motivation: On x86-64 hardware we have
+empirically found that overlapping loads such as
+ UNALIGNED_LOAD32(p) ... UNALIGNED_LOAD32(p+1) ... UNALIGNED_LOAD32(p+2)
+are slower than UNALIGNED_LOAD64(p) followed by shifts and casts to uint32.
+
+We have different versions for 64- and 32-bit; ideally we would avoid the
+two functions and just inline the UNALIGNED_LOAD64 call into
+GetUint32AtOffset, but GCC (at least not as of 4.6) is seemingly not clever
+enough to avoid loading the value multiple times then. For 64-bit, the load
+is done when GetEightBytesAt() is called, whereas for 32-bit, the load is
+done at GetUint32AtOffset() time.
+*/
+
+#if defined(__x86_64__) /* TODO: check for sizeof(void*)==8 instead. */
+
+typedef uint64_t EightBytesReference;
+
+static inline EightBytesReference GetEightBytesAt(const char* ptr) {
+	return UNALIGNED_LOAD64(ptr);
+}
+
+static inline uint32_t GetUint32AtOffset(uint64_t v, int offset) {
+	DCHECK_GE(offset, 0);
+	DCHECK_LE(offset, 4);
 #ifdef __LITTLE_ENDIAN
 	return v >> (8 * offset);
 #else
 	return v >> (32 - 8 * offset);
 #endif
 }
+
+#else /* !ARCH_K8 */
+
+typedef const char* EightBytesReference;
+
+static inline EightBytesReference GetEightBytesAt(const char* ptr) {
+	return ptr;
+}
+
+static inline uint32_t GetUint32AtOffset(const char* v, int offset) {
+	DCHECK_GE(offset, 0);
+	DCHECK_LE(offset, 4);
+	return UNALIGNED_LOAD32(v + offset);
+}
+
+#endif /* !ARCH_K8 */
+
 
 #define kInputMarginBytes 15
 char*
@@ -312,7 +344,7 @@ csnappy_compress_fragment(
 	const char *ip, *ip_end, *base_ip, *next_emit, *ip_limit, *next_ip,
 			*candidate, *base;
 	uint16_t *table = (uint16_t *)working_memory;
-	uint64_t input_bytes;
+	EightBytesReference input_bytes;
 	uint32_t hash, next_hash, prev_hash, cur_hash, skip, candidate_bytes;
 	int shift, matched;
 
@@ -404,7 +436,6 @@ main_loop:
 	* by proceeding to the next iteration of the main loop. We also can exit
 	* this loop via goto if we get close to exhausting the input.
 	*/
-	input_bytes = 0;
 	candidate_bytes = 0;
 
 	do {
@@ -420,7 +451,7 @@ main_loop:
 		next_emit = ip;
 		if (unlikely(ip >= ip_limit))
 			goto emit_remainder;
-		input_bytes = UNALIGNED_LOAD64(ip - 1);
+		input_bytes = GetEightBytesAt(ip - 1);
 		prev_hash = HashBytes(GetUint32AtOffset(input_bytes, 0), shift);
 		table[prev_hash] = ip - base_ip - 1;
 		cur_hash = HashBytes(GetUint32AtOffset(input_bytes, 1), shift);
