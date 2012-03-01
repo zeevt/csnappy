@@ -265,7 +265,7 @@ csnappy_decompress_noheader(
 	uint32_t	*dst_len)
 {
 	struct SnappyArrayWriter writer;
-	const char * const end_minus5 = src + src_remaining - 5;
+	const char *end_minus5 = src + src_remaining - 5;
 	uint32_t length, trailer, opword, extra_bytes;
 	int ret, available;
 	uint8_t opcode;
@@ -277,8 +277,9 @@ csnappy_decompress_noheader(
 		available = end_minus5 + 5 - src;	\
 		if (unlikely(available <= 0))		\
 			goto out;			\
-		memcpy(scratch, src, available);	\
+		memmove(scratch, src, available);	\
 		src = scratch;				\
+		end_minus5 = scratch + available - 5;	\
 	}
 	
 	LOOP_COND();
@@ -309,6 +310,7 @@ csnappy_decompress_noheader(
 				extra_bytes = length - 60;
 				length = (get_unaligned_le32(src) & wordmask[extra_bytes]) + 1;
 				src += extra_bytes;
+				available = end_minus5 + 5 - src;
 			}
 			if (unlikely(available < length))
 				return CSNAPPY_E_DATA_MALFORMED;
