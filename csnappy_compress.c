@@ -214,9 +214,8 @@ EmitLiteral(char *op, const char *literal, int len, int allow_fast_path)
 		snappy_max_compressed_length).
 		*/
 		if (allow_fast_path && len <= 16) {
-			UNALIGNED_STORE64(op, UNALIGNED_LOAD64(literal));
-			UNALIGNED_STORE64(op + 8,
-						UNALIGNED_LOAD64(literal + 8));
+			UnalignedCopy64(literal, op);
+			UnalignedCopy64(literal + 8, op + 8);
 			return op + len;
 		}
 	} else {
