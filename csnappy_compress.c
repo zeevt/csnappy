@@ -297,7 +297,7 @@ is done when GetEightBytesAt() is called, whereas for 32-bit, the load is
 done at GetUint32AtOffset() time.
 */
 
-#if defined(__x86_64__) /* TODO: check for sizeof(void*)==8 instead. */
+#if defined(__x86_64__) || (__SIZEOF_SIZE_T__ == 8)
 
 typedef uint64_t EightBytesReference;
 
