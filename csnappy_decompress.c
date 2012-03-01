@@ -265,54 +265,62 @@ csnappy_decompress_noheader(
 	uint32_t	*dst_len)
 {
 	struct SnappyArrayWriter writer;
+	const char * const end_minus5 = src + src_remaining - 5;
 	uint32_t length, trailer, opword, extra_bytes;
-	int ret;
+	int ret, available;
 	uint8_t opcode;
 	char scratch[5];
 	writer.op = writer.base = dst;
 	writer.op_limit = writer.op + *dst_len;
-	while (src_remaining) {
-		if (unlikely(src_remaining < 5)) {
-			memcpy(scratch, src, src_remaining);
-			src = scratch;
-		}
+	#define LOOP_COND() \
+	if (unlikely(src >= end_minus5)) {		\
+		available = end_minus5 + 5 - src;	\
+		if (unlikely(available <= 0))		\
+			goto out;			\
+		memcpy(scratch, src, available);	\
+		src = scratch;				\
+	}
+	
+	LOOP_COND();
+	for (;;) {
 		opcode = *(const uint8_t *)src++;
-		src_remaining--;
 		if (opcode & 0x3) {
 			opword = char_table[opcode];
 			extra_bytes = opword >> 11;
 			trailer = get_unaligned_le32(src) & wordmask[extra_bytes];
 			length = opword & 0xff;
 			src += extra_bytes;
-			src_remaining -= extra_bytes;
 			trailer += opword & 0x700;
 			ret = SAW__AppendFromSelf(&writer, trailer, length);
 			if (ret < 0)
 				return ret;
+			LOOP_COND();
 		} else {
 			length = (opcode >> 2) + 1;
-			if (length <= 16 && src_remaining >= 16) {
+			available = end_minus5 + 5 - src;
+			if (length <= 16 && available >= 16) {
 				if ((ret = SAW__AppendFastPath(&writer, src, length)) < 0)
 					return ret;
 				src += length;
-				src_remaining -= length;
+				LOOP_COND();
 				continue;
 			}
 			if (unlikely(length > 60)) {
 				extra_bytes = length - 60;
 				length = (get_unaligned_le32(src) & wordmask[extra_bytes]) + 1;
 				src += extra_bytes;
-				src_remaining -= extra_bytes;
 			}
-			if (unlikely(src_remaining < length))
+			if (unlikely(available < length))
 				return CSNAPPY_E_DATA_MALFORMED;
 			ret = SAW__Append(&writer, src, length);
 			if (ret < 0)
 				return ret;
 			src += length;
-			src_remaining -= length;
+			LOOP_COND();
 		}
 	}
+#undef LOOP_COND
+out:
 	*dst_len = writer.op - writer.base;
 	return CSNAPPY_E_OK;
 }
