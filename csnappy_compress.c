@@ -172,7 +172,7 @@ FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 		s2 += 4;
 		matched += 4;
 	}
-#if defined(__LITTLE_ENDIAN)
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 	if (s2 <= s2_limit - 4) {
 		uint32_t x = UNALIGNED_LOAD32(s1 + matched) ^
 				UNALIGNED_LOAD32(s2);

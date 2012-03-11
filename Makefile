@@ -7,14 +7,9 @@ CFLAGS += $(DBG_FLAGS)
 else
 CFLAGS += $(OPT_FLAGS)
 endif
-LDFLAGS = -Wl,-O1
+LDFLAGS = -Wl,-O1 -Wl,--no-undefined
 
 all: test
-
-endianness_file: endianness.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -o endianness $<
-	./endianness > $@
--include endianness_file
 
 test: cl_test check_leaks
 
@@ -24,7 +19,8 @@ cl_tester: cl_tester.c csnappy.h libcsnappy.so
 cl_test: cl_tester
 	rm -f afifo
 	mkfifo afifo
-	LD_LIBRARY_PATH=. ./cl_tester -c <testdata/urls.10K | LD_LIBRARY_PATH=. ./cl_tester -d -c > afifo &
+	LD_LIBRARY_PATH=. ./cl_tester -c <testdata/urls.10K | \
+	LD_LIBRARY_PATH=. ./cl_tester -d -c > afifo &
 	diff -u testdata/urls.10K afifo && echo "compress-decompress restores original"
 	rm -f afifo
 	LD_LIBRARY_PATH=. ./cl_tester -S d && echo "decompression is safe"
@@ -72,6 +68,29 @@ test_block_compressor: block_compressor
 	rm -f itmp otmp ;\
 	done ; \
 	done ;
+
+NDK = /mnt/backup/home/backup/android-ndk-r7b
+SYSROOT = $(NDK)/platforms/android-5/arch-arm
+TOOLCHAIN = $(NDK)/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin
+unaligned_test_android: unaligned_test.c unaligned_arm.s
+	$(TOOLCHAIN)/arm-linux-androideabi-gcc \
+	-ffunction-sections -funwind-tables -fstack-protector \
+	-D__ARM_ARCH_5__ -D__ARM_ARCH_5T__ -D__ARM_ARCH_5E__ -D__ARM_ARCH_5TE__ \
+	-Wno-psabi -march=armv5te -mtune=xscale -msoft-float -mthumb \
+	-O2 -fomit-frame-pointer -fno-strict-aliasing -finline-limit=64 \
+	-DANDROID  -Wa,--noexecstack -DNDEBUG -g \
+	-I$(SYSROOT)/usr/include -c -o unaligned_test.o unaligned_test.c
+	$(TOOLCHAIN)/arm-linux-androideabi-gcc \
+	-ffunction-sections -funwind-tables -fstack-protector \
+	-D__ARM_ARCH_5__ -D__ARM_ARCH_5T__ -D__ARM_ARCH_5E__ -D__ARM_ARCH_5TE__ \
+	-Wno-psabi -march=armv5te -mtune=xscale -msoft-float -mthumb \
+	-O2 -fomit-frame-pointer -fno-strict-aliasing -finline-limit=64 \
+	-DANDROID  -Wa,--noexecstack -DNDEBUG -g \
+	-I$(SYSROOT)/usr/include -c -o unaligned_arm.o unaligned_arm.s
+	$(TOOLCHAIN)/arm-linux-androideabi-g++ \
+	--sysroot=$(SYSROOT) unaligned_test.o unaligned_arm.o \
+	$(TOOLCHAIN)/../lib/gcc/arm-linux-androideabi/4.4.3/libgcc.a \
+	-Wl,--no-undefined -Wl,-z,noexecstack -lc -lm -o unaligned_test_android
 
 install: csnappy.h libcsnappy.so
 	cp csnappy.h /usr/include/

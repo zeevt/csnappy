@@ -41,12 +41,9 @@ typedef unsigned __int8  uint8_t;
 typedef unsigned __int16 uint16_t;
 typedef unsigned __int32 uint32_t;
 typedef unsigned __int64 uint64_t;
-#elif defined(__linux__) || defined(__GLIBC__) || defined(__WIN32__) || defined(__APPLE__)
-#include <stdint.h>
 #else
-#include <sys/types.h>
+#include <stdint.h>
 #endif
-#include <string.h>
 
 #ifdef _GNU_SOURCE
 #define min(x, y) (__extension__ ({		\
@@ -70,9 +67,75 @@ typedef unsigned __int64 uint64_t;
 #define DCHECK(cond)
 #endif
 
+/*
+Uses code from http://code.google.com/p/exfat/source/browse/trunk/libexfat/byteorder.h
+with 3-clause BSD license instead of GPL, with permission from:
+Andrew Nayenko
+Albert Lee
+*/
+#if defined(_MSC_VER)
+
+#include <stdlib.h>
+#define bswap_16(x) _byteswap_ushort(x)
+#define bswap_32(x) _byteswap_ulong(x)
+#define bswap_64(x) _byteswap_uint64(x)
+
+#elif defined(__GLIBC__) || defined(__ANDROID__)
+
+#include <endian.h>
+#include <byteswap.h>
+
+#elif defined(__APPLE__)
+
+#include <machine/endian.h>
+#include <libkern/OSByteOrder.h>
+#define bswap_16(x) OSSwapInt16(x)
+#define bswap_32(x) OSSwapInt32(x)
+#define bswap_64(x) OSSwapInt64(x)
+#define __BYTE_ORDER BYTE_ORDER
+#define __LITTLE_ENDIAN LITTLE_ENDIAN
+#define __BIG_ENDIAN BIG_ENDIAN
+
+#elif defined(__FreeBSD__) || defined(__DragonFlyBSD__) || defined(__NetBSD__)
+
+#include <sys/endian.h>
+#define bswap_16(x) bswap16(x)
+#define bswap_32(x) bswap32(x)
+#define bswap_64(x) bswap64(x)
+#define __BYTE_ORDER _BYTE_ORDER
+#define __LITTLE_ENDIAN _LITTLE_ENDIAN
+#define __BIG_ENDIAN _BIG_ENDIAN
+
+#elif defined(__OpenBSD__)
+
+#include <machine/endian.h>
+#define bswap_16(x) swap16(x)
+#define bswap_32(x) swap32(x)
+#define bswap_64(x) swap64(x)
+#define __BYTE_ORDER _BYTE_ORDER
+#define __LITTLE_ENDIAN _LITTLE_ENDIAN
+#define __BIG_ENDIAN _BIG_ENDIAN
+
+#elif defined(__sun)
+
+#include <sys/byteorder.h>
+#define bswap_16(x) BSWAP_16(x)
+#define bswap_32(x) BSWAP_32(x)
+#define bswap_64(x) BSWAP_64(x)
+#define __LITTLE_ENDIAN 1234
+#define __BIG_ENDIAN 4321
+#ifdef _LITTLE_ENDIAN
+#define __BYTE_ORDER __LITTLE_ENDIAN
+#else
+#define __BYTE_ORDER __BIG_ENDIAN
+#endif
+
+#else 
+#error No byte order macros available for your platform
+#endif
+
 
 /* Potentially unaligned loads and stores. */
-/* TODO: use http://code.google.com/p/exfat/source/browse/trunk/libexfat/byteorder.h with permission. */
 
 #if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__)
 
@@ -108,7 +171,9 @@ typedef unsigned __int64 uint64_t;
 #define UNALIGNED_STORE16(_p, _val) (*(uint16_t*)(_p) = (_val))
 #define UNALIGNED_STORE32(_p, _val) (*(uint32_t*)(_p) = (_val))
 
-struct __attribute__((__packed__)) una_u64 { uint64_t x; };
+#pragma pack(1)
+struct una_u64 { uint64_t x; };
+#pragma pack()
 
 static inline uint64_t UNALIGNED_LOAD64(const void *p)
 {
@@ -122,10 +187,7 @@ static inline void UNALIGNED_STORE64(void *p, uint64_t v)
 	ptr->x = v;
 }
 
-#else /* !(x86 || powerpc) && !(arm && !old arm architectures) */
-
-/* These functions are provided for architectures that don't support
-   unaligned loads and stores. */
+#else /* !(x86 || powerpc) && !(arm && !(old arm architectures)) */
 
 #pragma pack(1)
 struct una_u16 { uint16_t x; };
@@ -171,81 +233,22 @@ static inline void UNALIGNED_STORE64(void *p, uint64_t v)
 
 #endif /* !(x86 || powerpc) && !(arm && !armv5 && !armv6) */
 
-/* This can be more efficient than UNALIGNED_LOAD64 + UNALIGNED_STORE64
-   on some platforms, in particular ARM. */
-static inline void UnalignedCopy64(const void *src, void *dst) {
-  if (sizeof(void *) == 8) {
-    UNALIGNED_STORE64(dst, UNALIGNED_LOAD64(src));
-  } else {
-    const char *src_char = (const char *)src;
-    char *dst_char = (char *)dst;
 
-    UNALIGNED_STORE32(dst_char, UNALIGNED_LOAD32(src_char));
-    UNALIGNED_STORE32(dst_char + 4, UNALIGNED_LOAD32(src_char + 4));
-  }
-}
-
-
-/* kernel defined either one or the other, stdlib defines both */
-#if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
-# if defined(__BYTE_ORDER)
-#  if __BYTE_ORDER == __LITTLE_ENDIAN
-#   undef __BIG_ENDIAN
-#   warning forecefully undefined __BIG_ENDIAN based on __BYTE_ORDER
-#  elif __BYTE_ORDER == __BIG_ENDIAN
-#   undef __LITTLE_ENDIAN
-#   warning forecefully undefined __LITTLE_ENDIAN based on __BYTE_ORDER
-#  endif
-# endif
-#endif
-
-#if !defined(__LITTLE_ENDIAN) && !defined(__BIG_ENDIAN)
-# error __LITTLE_ENDIAN or __BIG_ENDIAN must be defined
-#endif
-#if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
-# error __LITTLE_ENDIAN or __BIG_ENDIAN must be defined, not both!
-#endif
-
-/* Convert to little-endian storage, opposite of network format. */
-#if defined(__BIG_ENDIAN)
-
-/* The following guarantees declaration of the byte swap functions. */
-#ifdef _MSC_VER
-#include <stdlib.h>
-#define bswap_16(x) _byteswap_ushort(x)
-#define bswap_32(x) _byteswap_ulong(x)
-#define bswap_64(x) _byteswap_uint64(x)
-#elif defined(__APPLE__)
-/* Mac OS X / Darwin features */
-#include <libkern/OSByteOrder.h>
-#define bswap_16(x) OSSwapInt16(x)
-#define bswap_32(x) OSSwapInt32(x)
-#define bswap_64(x) OSSwapInt64(x)
-#elif defined(__sun)
-#include <sys/byteorder.h>
-#define bswap_16(x) BSWAP_16(x)
-#define bswap_32(x) BSWAP_32(x)
-#define bswap_64(x) BSWAP_64(x)
-#else
-#include <byteswap.h>
-#endif
-
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define get_unaligned_le32(p)           UNALIGNED_LOAD32(p)
+#define put_unaligned_le16(v, p)        UNALIGNED_STORE16(p, v)
+#elif __BYTE_ORDER == __BIG_ENDIAN
 static inline uint32_t get_unaligned_le32(const void *p)
 {
-	return bswap_32(UNALIGNED_LOAD32(p));
+  return bswap_32(UNALIGNED_LOAD32(p));
 }
-
 static inline void put_unaligned_le16(uint16_t val, void *p)
 {
-	uint8_t *pp = (uint8_t*)p;
-	*pp++ = val;
-	*pp++ = val >> 8;
+  UNALIGNED_STORE16(p, bswap_16(val));
 }
-
-#else /* !defined(__BIG_ENDIAN) */
-#define get_unaligned_le32(p)		(*(const uint32_t*)(p))
-#define put_unaligned_le16(v, p)	*(uint16_t*)(p) = (uint16_t)(v)
-#endif /* !defined(__BIG_ENDIAN) */
+#else
+#error __BYTE_ORDER must be either __LITTLE_ENDIAN or __BIG_ENDIAN
+#endif
 
 
 #if defined(HAVE_BUILTIN_CTZ)

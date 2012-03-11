@@ -40,11 +40,6 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #include "csnappy.h"
 
 
-/* Mapping from i in range [0,4] to a mask to extract the bottom 8*i bits */
-static const uint32_t wordmask[] = {
-	0u, 0xffu, 0xffffu, 0xffffffu, 0xffffffffu
-};
-
 /*
  * Data stored per entry in lookup table:
  *      Range   Bits-used       Description
@@ -288,7 +283,7 @@ csnappy_decompress_noheader(
 		if (opcode & 0x3) {
 			opword = char_table[opcode];
 			extra_bytes = opword >> 11;
-			trailer = get_unaligned_le32(src) & wordmask[extra_bytes];
+			trailer = get_unaligned_le(src, extra_bytes);
 			length = opword & 0xff;
 			src += extra_bytes;
 			trailer += opword & 0x700;
@@ -308,7 +303,7 @@ csnappy_decompress_noheader(
 			}
 			if (unlikely(length > 60)) {
 				extra_bytes = length - 60;
-				length = (get_unaligned_le32(src) & wordmask[extra_bytes]) + 1;
+				length = get_unaligned_le(src, extra_bytes) + 1;
 				src += extra_bytes;
 				available = end_minus5 + 5 - src;
 			}

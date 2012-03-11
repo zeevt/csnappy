@@ -81,7 +81,7 @@ csnappy_get_uncompressed_length(
  * entire compressed stream (with header) into array "dst" of size "dst_len".
  * REQUIRES: dst_len is at least csnappy_get_uncompressed_length(...).
  *
- * Iff sucessful, returns CSNAPPY_E_OK.
+ * Iff successful, returns CSNAPPY_E_OK.
  * If recorded length in header is greater than dst_len, returns
  *  CSNAPPY_E_OUTPUT_INSUF.
  * If compressed data is malformed, does not write more than dst_len into dst.
@@ -99,7 +99,7 @@ csnappy_decompress(
  * If compressed stream needs more space, it will not overflow and return
  *  CSNAPPY_E_OUTPUT_OVERRUN.
  * On success, sets *dst_len to actal number of bytes decompressed.
- * Iff sucessful, returns CSNAPPY_E_OK.
+ * Iff successful, returns CSNAPPY_E_OK.
  */
 int
 csnappy_decompress_noheader(
