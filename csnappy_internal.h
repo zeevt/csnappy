@@ -101,7 +101,8 @@ static void UnalignedCopy64(const void *src, void *dst) {
   #if defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__) || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__)
      static inline uint32_t get_unaligned_le(const void *p, uint32_t n)
      {
-       return *(const uint32_t *)p & ((1U << (8 * n)) - 1);
+       uint32_t wordmask = (1U << (8 * n)) - 1;
+       return get_unaligned_le32(p) & wordmask;
      }
   #else
      extern uint32_t unaligned_read_le_armv5(const void *p, uint32_t n);
