@@ -105,7 +105,7 @@ static void UnalignedCopy64(const void *src, void *dst) {
        return get_unaligned_le32(p) & wordmask;
      }
   #else
-     extern uint32_t unaligned_read_le_armv5(const void *p, uint32_t n);
+     extern uint32_t get_unaligned_le_armv5(const void *p, uint32_t n);
      #define get_unaligned_le get_unaligned_le_armv5
   #endif
 #else
