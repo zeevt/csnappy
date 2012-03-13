@@ -4,28 +4,9 @@ is a compression library designed for speed rather than compression ratios.
 It is not a new concept by far. The Linux kernel currently uses LZO as the
  default fast compressor. Snappy works faster, though achieves less compression.
 
-Because Google did not provide a bitstream description or documentation
- describing the format and the reference code is heavy obfuscated by
- optimizations, I have written an English description and minimal C code to
- decompress Snappy streams. It passes all tests and appears to be about twice
- slower than the optimized version, but it is small both as source
- (csnappy_simple.c) and as machine code.
-
-Snappy was written at Google some time in 2005 under the name Zippy and
- eventually released as an open source project on March 18th 2011 under a
- new name and the Apache 2 license. This license is incompatible with GPL v2
- and after being asked nicely by a representative of Mozilla Google have
- changed the license to BSD.
-
 Google's code is written in C with a lot of C++. Some of the more interesting
  features that rely on C++ appear to have been elided from the open source
  version of Snappy.
-
-As of April 8th (http://code.google.com/p/snappy/source/detail?r=27)
- Google Snappy has a C API, but it just calls the C++ code. My port is pure C.
-Google used exported symbols that collided with mine, so I switched all my
- symbols from snappy_* to csnappy_*. I probably should have done that from the
- start.
 
 Goals:
 To get the codebase into a shape that can be accepted into the mainline
@@ -35,9 +16,8 @@ Same for support in Squashfs and other parts of the kernel that currently
  support LZO.
 
 Results:
-To this end I cut out or ported to plain ANSI C the necessary code and headers.
+I cut out or ported to plain ANSI C the necessary code and headers.
 To cause less confusion, I call this project (and files) csnappy.
-The work is not yet complete.
 The API looks right, but I welcome comments.
 The code *has* been tested in kernel-space using a patched zram and it works.
 
@@ -49,19 +29,14 @@ The code has been tested in a qemu environment emulating a PowerPC mac running
  gcc 4.4. Compressed files produced by ppc32 snappy are *not* the same as those
  produced by amd64 snappy, but do decompress correctly.
 
-Note: The userspace tester is a hack, as is the shared library, because I did
- not use autotools.
+Note: The userspace tester is a hack, as is the shared library.
 
 Someone wrote a perl wrapper for csnappy:
 http://search.cpan.org/dist/Compress-Snappy/
 https://github.com/gray/compress-snappy
 
-Patch for upstream snappy tester is available (snappy_tester.patch).
-Patches for linux kernel (2.6.39-rc3) are available:
-linux_2_6_39-rc3_csnappy_v2.patch
-linux_2_6_39-rc3_zram_v2.patch
-Sometimes code in linux patch is not in sync with code in csnappy_* files,
- but this gets fixed in a few hours.
+Patch for upstream snappy tester is available: snappy_tester.patch
+Patch for linux kernel is available: kernel_3_2_10.patch
 
 Benchmark in userspace: userspace_benchmark.txt
 Benchmark in kernel space with zram: zram_benchmark.txt
