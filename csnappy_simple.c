@@ -85,6 +85,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include "csnappy.h"
 
+#ifndef __GNUC__
+#define __attribute__(x) /*NOTHING*/
+#define __builtin_expect(a,b) a
+#endif
+
 #define likely(x)	__builtin_expect(!!(x), 1)
 #define unlikely(x)	__builtin_expect(!!(x), 0)
 

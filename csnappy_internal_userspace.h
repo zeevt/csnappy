@@ -36,6 +36,11 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #ifndef CSNAPPY_INTERNAL_USERSPACE_H_
 #define CSNAPPY_INTERNAL_USERSPACE_H_
 
+#ifndef __GNUC__
+#define __attribute__(x) /*NOTHING*/
+#define __builtin_expect(a,b) a
+#endif
+
 #if defined(_MSC_VER) && (_MSC_VER <= 1300)
 typedef unsigned __int8  uint8_t;
 typedef unsigned __int16 uint16_t;
