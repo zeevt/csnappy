@@ -36,11 +36,6 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #ifndef CSNAPPY_INTERNAL_USERSPACE_H_
 #define CSNAPPY_INTERNAL_USERSPACE_H_
 
-#ifndef __GNUC__
-#define __attribute__(x) /*NOTHING*/
-#define __builtin_expect(a,b) a
-#endif
-
 #if defined(_MSC_VER) && (_MSC_VER <= 1300)
 typedef unsigned __int8  uint8_t;
 typedef unsigned __int16 uint16_t;
@@ -61,6 +56,9 @@ typedef unsigned __int64 uint64_t;
 #endif
 
 /* Static prediction hints. */
+#ifndef __GNUC__
+#define __builtin_expect(a,b) a
+#endif
 #define likely(x)	__builtin_expect(!!(x), 1)
 #define unlikely(x)	__builtin_expect(!!(x), 0)
 
