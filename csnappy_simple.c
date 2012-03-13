@@ -83,16 +83,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdint.h>
 #include <string.h>
+#include "csnappy.h"
 
-/*
- * Return values (< 0 = Error)
- */
-#define CSNAPPY_E_OK			0
-#define CSNAPPY_E_HEADER_BAD		(-1)
-#define CSNAPPY_E_OUTPUT_INSUF		(-2)
-#define CSNAPPY_E_OUTPUT_OVERRUN	(-3)
-#define CSNAPPY_E_DATA_MALFORMED	(-5)
-
+#define likely(x)	__builtin_expect(!!(x), 1)
+#define unlikely(x)	__builtin_expect(!!(x), 0)
 
 /*
  * RETURNS number of bytes read from src.
@@ -110,7 +104,7 @@ int __attribute__((noinline)) csnappy_get_uncompressed_length(
 	uint8_t b;
 	*uncompressed_len = 0;
 	for (;;) {
-		if (bytes_read >= src_len)
+		if (unlikely(bytes_read >= src_len))
 			return CSNAPPY_E_HEADER_BAD;
 		b = *(const uint8_t*)src++;
 		bytes_read++;
@@ -118,22 +112,11 @@ int __attribute__((noinline)) csnappy_get_uncompressed_length(
 		if (b < 128)
 			break;
 		shift += 7;
-		if (shift > 32)
+		if (unlikely(shift > 32))
 			return CSNAPPY_E_HEADER_BAD;
 	}
 	return bytes_read;
 }
-
-#define READ_LE_BYTES(n)				\
-	(__extension__ ({				\
-	if (src_remaining < n)				\
-		return CSNAPPY_E_DATA_MALFORMED;	\
-	src_remaining -= n;				\
-	uint32_t v = 0;					\
-	for (int i = 0; i < n; i++)			\
-		v |= *(const uint8_t*)src++ << (8 * i);	\
-	v;						\
-	}))
 
 /*
  * Uncompresses stream with no header.
@@ -143,48 +126,60 @@ int __attribute__((noinline)) csnappy_get_uncompressed_length(
  * Never writes past *dst_len bytes into dst.
  */
 int csnappy_decompress_noheader(
-	const char	*src,
+	const char	*src_,
 	uint32_t	src_remaining,
 	char		*dst,
 	uint32_t	*dst_len)
 {
+	const uint8_t * src = (const uint8_t *)src_;
+	const uint8_t * const src_end = src + src_remaining;
 	char * const dst_base = dst;
-	char * const dst_max = dst + *dst_len;
-	uint32_t length, offset;
-	uint8_t opcode;
-	main_loop:
-	while (src_remaining) {
-		opcode = READ_LE_BYTES(1);
-		length = (opcode >> 2) + 1;
-		switch (opcode & 3) {
-		case 0:
-			if (length > 60)
-				length = READ_LE_BYTES(length - 60) + 1;
-			if (length > dst_max - dst)
-				return CSNAPPY_E_OUTPUT_OVERRUN;
-			if (length > src_remaining)
+	char * const dst_end = dst + *dst_len;
+	while (src < src_end) {
+		uint32_t opcode = *src++;
+		uint32_t length = (opcode >> 2) + 1;
+		const uint8_t *copy_src;
+		if (likely((opcode & 3) == 0)) {
+			if (unlikely(length > 60)) {
+				uint32_t extra_bytes = length - 60;
+				if (unlikely(src + extra_bytes > src_end))
+					return CSNAPPY_E_DATA_MALFORMED;
+				length = 0;
+				for (int shift = 0, max_shift = extra_bytes*8;
+					shift < max_shift;
+					shift += 8)
+					length |= *src++ << shift;
+				++length;
+			}
+			if (unlikely(src + length > src_end))
 				return CSNAPPY_E_DATA_MALFORMED;
-			memcpy(dst, src, length);
-			dst += length;
+			copy_src = src;
 			src += length;
-			src_remaining -= length;
-			goto main_loop;
-		case 1:
-			length = ((length - 1) & 7) + 4;
-			offset = ((opcode >> 5) << 8) + READ_LE_BYTES(1);
-			break;
-		case 2:
-			offset = READ_LE_BYTES(2);
-			break;
-		case 3:
-			offset = READ_LE_BYTES(4);
-			break;
+		} else {
+			uint32_t offset;
+			if (likely((opcode & 3) == 1)) {
+				if (unlikely(src + 1 > src_end))
+					return CSNAPPY_E_DATA_MALFORMED;
+				length = ((length - 1) & 7) + 4;
+				offset = ((opcode >> 5) << 8) + *src++;
+			} else if (likely((opcode & 3) == 2)) {
+				if (unlikely(src + 2 > src_end))
+					return CSNAPPY_E_DATA_MALFORMED;
+				offset = src[0] | (src[1] << 8);
+				src += 2;
+			} else {
+				if (unlikely(src + 4 > src_end))
+					return CSNAPPY_E_DATA_MALFORMED;
+				offset = src[0] | (src[1] << 8) |
+					 (src[2] << 16) | (src[3] << 24);
+				src += 4;
+			}
+			if (unlikely(!offset || (offset > dst - dst_base)))
+				return CSNAPPY_E_DATA_MALFORMED;
+			copy_src = (const uint8_t *)dst - offset;
 		}
-		if (!offset || (offset > dst - dst_base))
-			return CSNAPPY_E_DATA_MALFORMED;
-		if (length > dst_max - dst)
+		if (unlikely(dst + length > dst_end))
 			return CSNAPPY_E_OUTPUT_OVERRUN;
-		const char *copy_src = dst - offset;
 		do *dst++ = *copy_src++; while (--length);
 	}
 	*dst_len = dst - dst_base;
@@ -200,9 +195,9 @@ int csnappy_decompress(
 	uint32_t compressed_len;
 	int bytes_read = csnappy_get_uncompressed_length(
 		src, src_len, &compressed_len);
-	if (bytes_read < 0)
+	if (unlikely(bytes_read < 0))
 		return bytes_read;
-	if (dst_len < compressed_len)
+	if (unlikely(dst_len < compressed_len))
 		return CSNAPPY_E_OUTPUT_INSUF;
 	return csnappy_decompress_noheader(
 		src + bytes_read, src_len - bytes_read, dst, &compressed_len);
