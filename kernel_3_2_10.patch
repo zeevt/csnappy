@@ -1,0 +1,1453 @@
+diff --git a/drivers/staging/Kconfig b/drivers/staging/Kconfig
+index 25cdff3..ace8395 100644
+--- a/drivers/staging/Kconfig
++++ b/drivers/staging/Kconfig
+@@ -88,6 +88,8 @@ source "drivers/staging/sep/Kconfig"
+ 
+ source "drivers/staging/iio/Kconfig"
+ 
++source "drivers/staging/snappy/Kconfig"
++
+ source "drivers/staging/zram/Kconfig"
+ 
+ source "drivers/staging/zcache/Kconfig"
+diff --git a/drivers/staging/Makefile b/drivers/staging/Makefile
+index a25f3f2..2c0862b 100644
+--- a/drivers/staging/Makefile
++++ b/drivers/staging/Makefile
+@@ -57,3 +57,5 @@ obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4)	+= ste_rmi4/
+ obj-$(CONFIG_DRM_PSB)		+= gma500/
+ obj-$(CONFIG_INTEL_MEI)		+= mei/
+ obj-$(CONFIG_MFD_NVEC)		+= nvec/
++obj-$(CONFIG_SNAPPY_COMPRESS)	+= snappy/
++obj-$(CONFIG_SNAPPY_DECOMPRESS)	+= snappy/
+diff --git a/drivers/staging/snappy/Kconfig b/drivers/staging/snappy/Kconfig
+new file mode 100644
+index 0000000..24f6908
+--- /dev/null
++++ b/drivers/staging/snappy/Kconfig
+@@ -0,0 +1,5 @@
++config SNAPPY_COMPRESS
++	tristate "Google Snappy Compression"
++
++config SNAPPY_DECOMPRESS
++	tristate "Google Snappy Decompression"
+diff --git a/drivers/staging/snappy/Makefile b/drivers/staging/snappy/Makefile
+new file mode 100644
+index 0000000..f5be21d
+--- /dev/null
++++ b/drivers/staging/snappy/Makefile
+@@ -0,0 +1,7 @@
++ccflags-y := -std=gnu99
++
++snappy_compress-objs := csnappy_compress.o
++snappy_decompress-objs := csnappy_decompress.o
++
++obj-$(CONFIG_SNAPPY_COMPRESS) += csnappy_compress.o
++obj-$(CONFIG_SNAPPY_DECOMPRESS) += csnappy_decompress.o
+diff --git a/drivers/staging/snappy/csnappy.h b/drivers/staging/snappy/csnappy.h
+new file mode 100644
+index 0000000..97a3e17
+--- /dev/null
++++ b/drivers/staging/snappy/csnappy.h
+@@ -0,0 +1,129 @@
++#ifndef __CSNAPPY_H__
++#define __CSNAPPY_H__
++/*
++File modified for the Linux Kernel by
++Zeev Tarantov <zeev.tarantov@gmail.com>
++*/
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++#define CSNAPPY_VERSION	4
++
++#define CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO 15
++#define CSNAPPY_WORKMEM_BYTES (1 << CSNAPPY_WORKMEM_BYTES_POWER_OF_TWO)
++
++#ifndef __GNUC__
++#define __attribute__(x) /*NOTHING*/
++#endif
++
++/*
++ * Returns the maximal size of the compressed representation of
++ * input data that is "source_len" bytes in length;
++ */
++uint32_t
++csnappy_max_compressed_length(uint32_t source_len) __attribute__((const));
++
++/*
++ * Flat array compression that does not emit the "uncompressed length"
++ * prefix. Compresses "input" array to the "output" array.
++ *
++ * REQUIRES: "input" is at most 32KiB long.
++ * REQUIRES: "output" points to an array of memory that is at least
++ * "csnappy_max_compressed_length(input_length)" in size.
++ * REQUIRES: working_memory has (1 << workmem_bytes_power_of_two) bytes.
++ * REQUIRES: 9 <= workmem_bytes_power_of_two <= 15.
++ *
++ * Returns an "end" pointer into "output" buffer.
++ * "end - output" is the compressed size of "input".
++ */
++char*
++csnappy_compress_fragment(
++	const char *input,
++	const uint32_t input_length,
++	char *output,
++	void *working_memory,
++	const int workmem_bytes_power_of_two);
++
++/*
++ * REQUIRES: "compressed" must point to an area of memory that is at
++ * least "csnappy_max_compressed_length(input_length)" bytes in length.
++ * REQUIRES: working_memory has (1 << workmem_bytes_power_of_two) bytes.
++ * REQUIRES: 9 <= workmem_bytes_power_of_two <= 15.
++ *
++ * Takes the data stored in "input[0..input_length]" and stores
++ * it in the array pointed to by "compressed".
++ *
++ * "*out_compressed_length" is set to the length of the compressed output.
++ */
++void
++csnappy_compress(
++	const char *input,
++	uint32_t input_length,
++	char *compressed,
++	uint32_t *out_compressed_length,
++	void *working_memory,
++	const int workmem_bytes_power_of_two);
++
++/*
++ * Reads header of compressed data to get stored length of uncompressed data.
++ * REQUIRES: start points to compressed data.
++ * REQUIRES: n is length of available compressed data.
++ *
++ * Returns SNAPPY_E_HEADER_BAD on error.
++ * Returns number of bytes read from input on success.
++ * Stores decoded length into *result.
++ */
++int
++csnappy_get_uncompressed_length(
++	const char *start,
++	uint32_t n,
++	uint32_t *result);
++
++/*
++ * Safely decompresses all data from array "src" of length "src_len" containing
++ * entire compressed stream (with header) into array "dst" of size "dst_len".
++ * REQUIRES: dst_len is at least csnappy_get_uncompressed_length(...).
++ *
++ * Iff successful, returns CSNAPPY_E_OK.
++ * If recorded length in header is greater than dst_len, returns
++ *  CSNAPPY_E_OUTPUT_INSUF.
++ * If compressed data is malformed, does not write more than dst_len into dst.
++ */
++int
++csnappy_decompress(
++	const char *src,
++	uint32_t src_len,
++	char *dst,
++	uint32_t dst_len);
++
++/*
++ * Safely decompresses stream src_len bytes long read from src to dst.
++ * Amount of available space at dst must be provided in *dst_len by caller.
++ * If compressed stream needs more space, it will not overflow and return
++ *  CSNAPPY_E_OUTPUT_OVERRUN.
++ * On success, sets *dst_len to actal number of bytes decompressed.
++ * Iff successful, returns CSNAPPY_E_OK.
++ */
++int
++csnappy_decompress_noheader(
++	const char *src,
++	uint32_t src_len,
++	char *dst,
++	uint32_t *dst_len);
++
++/*
++ * Return values (< 0 = Error)
++ */
++#define CSNAPPY_E_OK			0
++#define CSNAPPY_E_HEADER_BAD		(-1)
++#define CSNAPPY_E_OUTPUT_INSUF		(-2)
++#define CSNAPPY_E_OUTPUT_OVERRUN	(-3)
++#define CSNAPPY_E_INPUT_NOT_CONSUMED	(-4)
++#define CSNAPPY_E_DATA_MALFORMED	(-5)
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif
+diff --git a/drivers/staging/snappy/csnappy_compress.c b/drivers/staging/snappy/csnappy_compress.c
+new file mode 100644
+index 0000000..b093727
+--- /dev/null
++++ b/drivers/staging/snappy/csnappy_compress.c
+@@ -0,0 +1,527 @@
++/*
++Copyright 2011, Google Inc.
++All rights reserved.
++
++Redistribution and use in source and binary forms, with or without
++modification, are permitted provided that the following conditions are
++met:
++
++  * Redistributions of source code must retain the above copyright
++notice, this list of conditions and the following disclaimer.
++  * Redistributions in binary form must reproduce the above
++copyright notice, this list of conditions and the following disclaimer
++in the documentation and/or other materials provided with the
++distribution.
++  * Neither the name of Google Inc. nor the names of its
++contributors may be used to endorse or promote products derived from
++this software without specific prior written permission.
++
++THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++
++File modified for the Linux Kernel by
++Zeev Tarantov <zeev.tarantov@gmail.com>
++*/
++
++#include "csnappy_internal.h"
++#ifdef __KERNEL__
++#include <linux/kernel.h>
++#include <linux/module.h>
++#endif
++#include "csnappy.h"
++
++
++static inline char*
++encode_varint32(char *sptr, uint32_t v)
++{
++	uint8_t* ptr = (uint8_t *)sptr;
++	static const int B = 128;
++	if (v < (1<<7)) {
++		*(ptr++) = v;
++	} else if (v < (1<<14)) {
++		*(ptr++) = v | B;
++		*(ptr++) = v>>7;
++	} else if (v < (1<<21)) {
++		*(ptr++) = v | B;
++		*(ptr++) = (v>>7) | B;
++		*(ptr++) = v>>14;
++	} else if (v < (1<<28)) {
++		*(ptr++) = v | B;
++		*(ptr++) = (v>>7) | B;
++		*(ptr++) = (v>>14) | B;
++		*(ptr++) = v>>21;
++	} else {
++		*(ptr++) = v | B;
++		*(ptr++) = (v>>7) | B;
++		*(ptr++) = (v>>14) | B;
++		*(ptr++) = (v>>21) | B;
++		*(ptr++) = v>>28;
++	}
++	return (char *)ptr;
++}
++
++
++/*
++ * Any hash function will produce a valid compressed bitstream, but a good
++ * hash function reduces the number of collisions and thus yields better
++ * compression for compressible input, and more speed for incompressible
++ * input. Of course, it doesn't hurt if the hash function is reasonably fast
++ * either, as it gets called a lot.
++ */
++static inline uint32_t HashBytes(uint32_t bytes, int shift)
++{
++	uint32_t kMul = 0x1e35a7bd;
++	return (bytes * kMul) >> shift;
++}
++static inline uint32_t Hash(const char *p, int shift)
++{
++	return HashBytes(UNALIGNED_LOAD32(p), shift);
++}
++
++
++/*
++ * *** DO NOT CHANGE THE VALUE OF kBlockSize ***
++
++ * New Compression code chops up the input into blocks of at most
++ * the following size.  This ensures that back-references in the
++ * output never cross kBlockSize block boundaries.  This can be
++ * helpful in implementing blocked decompression.  However the
++ * decompression code should not rely on this guarantee since older
++ * compression code may not obey it.
++ */
++#define kBlockLog 15
++#define kBlockSize (1 << kBlockLog)
++
++
++/*
++ * Return the largest n such that
++ *
++ *   s1[0,n-1] == s2[0,n-1]
++ *   and n <= (s2_limit - s2).
++ *
++ * Does not read *s2_limit or beyond.
++ * Does not read *(s1 + (s2_limit - s2)) or beyond.
++ * Requires that s2_limit >= s2.
++ *
++ * Separate implementation for x86_64, for speed.  Uses the fact that
++ * x86_64 is little endian.
++ */
++#if defined(__x86_64__)
++static inline int
++FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
++{
++	uint64_t x;
++	int matched, matching_bits;
++	DCHECK_GE(s2_limit, s2);
++	matched = 0;
++	/*
++	 * Find out how long the match is. We loop over the data 64 bits at a
++	 * time until we find a 64-bit block that doesn't match; then we find
++	 * the first non-matching bit and use that to calculate the total
++	 * length of the match.
++	 */
++	while (likely(s2 <= s2_limit - 8)) {
++		if (unlikely(UNALIGNED_LOAD64(s1 + matched) ==
++				UNALIGNED_LOAD64(s2))) {
++			s2 += 8;
++			matched += 8;
++		} else {
++			/*
++			 * On current (mid-2008) Opteron models there is a 3%
++			 * more efficient code sequence to find the first
++			 * non-matching byte. However, what follows is ~10%
++			 * better on Intel Core 2 and newer, and we expect AMD's
++			 * bsf instruction to improve.
++			 */
++			x = UNALIGNED_LOAD64(s1 + matched) ^
++				UNALIGNED_LOAD64(s2);
++			matching_bits = FindLSBSetNonZero64(x);
++			matched += matching_bits >> 3;
++			return matched;
++		}
++	}
++	while (likely(s2 < s2_limit)) {
++		if (likely(s1[matched] == *s2)) {
++			++s2;
++			++matched;
++		} else {
++			return matched;
++		}
++	}
++	return matched;
++}
++#else /* !defined(__x86_64__) */
++static inline int
++FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
++{
++	/* Implementation based on the x86-64 version, above. */
++	int matched = 0;
++	DCHECK_GE(s2_limit, s2);
++
++	while (s2 <= s2_limit - 4 &&
++		UNALIGNED_LOAD32(s2) == UNALIGNED_LOAD32(s1 + matched)) {
++		s2 += 4;
++		matched += 4;
++	}
++#if __BYTE_ORDER == __LITTLE_ENDIAN
++	if (s2 <= s2_limit - 4) {
++		uint32_t x = UNALIGNED_LOAD32(s1 + matched) ^
++				UNALIGNED_LOAD32(s2);
++		int matching_bits = FindLSBSetNonZero(x);
++		matched += matching_bits >> 3;
++	} else {
++		while ((s2 < s2_limit) && (s1[matched] == *s2)) {
++			++s2;
++			++matched;
++		}
++	}
++#else
++	while ((s2 < s2_limit) && (s1[matched] == *s2)) {
++		++s2;
++		++matched;
++	}
++#endif
++	return matched;
++}
++#endif /* !defined(__x86_64__) */
++
++
++static inline char*
++EmitLiteral(char *op, const char *literal, int len, int allow_fast_path)
++{
++	int n = len - 1; /* Zero-length literals are disallowed */
++	if (n < 60) {
++		/* Fits in tag byte */
++		*op++ = LITERAL | (n << 2);
++		/*
++		The vast majority of copies are below 16 bytes, for which a
++		call to memcpy is overkill. This fast path can sometimes
++		copy up to 15 bytes too much, but that is okay in the
++		main loop, since we have a bit to go on for both sides:
++		- The input will always have kInputMarginBytes = 15 extra
++		available bytes, as long as we're in the main loop, and
++		if not, allow_fast_path = false.
++		- The output will always have 32 spare bytes (see
++		snappy_max_compressed_length).
++		*/
++		if (allow_fast_path && len <= 16) {
++			UnalignedCopy64(literal, op);
++			UnalignedCopy64(literal + 8, op + 8);
++			return op + len;
++		}
++	} else {
++		/* Encode in upcoming bytes */
++		char *base = op;
++		int count = 0;
++		op++;
++		while (n > 0) {
++			*op++ = n & 0xff;
++			n >>= 8;
++			count++;
++		}
++		DCHECK_GE(count, 1);
++		DCHECK_LE(count, 4);
++		*base = LITERAL | ((59+count) << 2);
++	}
++	memcpy(op, literal, len);
++	return op + len;
++}
++
++static inline char*
++EmitCopyLessThan64(char *op, int offset, int len)
++{
++	DCHECK_LE(len, 64);
++	DCHECK_GE(len, 4);
++	DCHECK_LT(offset, 65536);
++
++	if ((len < 12) && (offset < 2048)) {
++		int len_minus_4 = len - 4;
++		DCHECK_LT(len_minus_4, 8); /* Must fit in 3 bits */
++		*op++ = COPY_1_BYTE_OFFSET   |
++			((len_minus_4) << 2) |
++			((offset >> 8) << 5);
++		*op++ = offset & 0xff;
++	} else {
++		*op++ = COPY_2_BYTE_OFFSET | ((len-1) << 2);
++		put_unaligned_le16(offset, op);
++		op += 2;
++	}
++	return op;
++}
++
++static inline char*
++EmitCopy(char *op, int offset, int len)
++{
++	/* Emit 64 byte copies but make sure to keep at least four bytes
++	 * reserved */
++	while (len >= 68) {
++		op = EmitCopyLessThan64(op, offset, 64);
++		len -= 64;
++	}
++
++	/* Emit an extra 60 byte copy if have too much data to fit in one
++	 * copy */
++	if (len > 64) {
++		op = EmitCopyLessThan64(op, offset, 60);
++		len -= 60;
++	}
++
++	/* Emit remainder */
++	op = EmitCopyLessThan64(op, offset, len);
++	return op;
++}
++
++
++/*
++For 0 <= offset <= 4, GetUint32AtOffset(GetEightBytesAt(p), offset) will
++equal UNALIGNED_LOAD32(p + offset).  Motivation: On x86-64 hardware we have
++empirically found that overlapping loads such as
++ UNALIGNED_LOAD32(p) ... UNALIGNED_LOAD32(p+1) ... UNALIGNED_LOAD32(p+2)
++are slower than UNALIGNED_LOAD64(p) followed by shifts and casts to uint32.
++
++We have different versions for 64- and 32-bit; ideally we would avoid the
++two functions and just inline the UNALIGNED_LOAD64 call into
++GetUint32AtOffset, but GCC (at least not as of 4.6) is seemingly not clever
++enough to avoid loading the value multiple times then. For 64-bit, the load
++is done when GetEightBytesAt() is called, whereas for 32-bit, the load is
++done at GetUint32AtOffset() time.
++*/
++
++#if defined(__x86_64__) || (__SIZEOF_SIZE_T__ == 8)
++
++typedef uint64_t EightBytesReference;
++
++static inline EightBytesReference GetEightBytesAt(const char* ptr) {
++	return UNALIGNED_LOAD64(ptr);
++}
++
++static inline uint32_t GetUint32AtOffset(uint64_t v, int offset) {
++	DCHECK_GE(offset, 0);
++	DCHECK_LE(offset, 4);
++#ifdef __LITTLE_ENDIAN
++	return v >> (8 * offset);
++#else
++	return v >> (32 - 8 * offset);
++#endif
++}
++
++#else /* !ARCH_K8 */
++
++typedef const char* EightBytesReference;
++
++static inline EightBytesReference GetEightBytesAt(const char* ptr) {
++	return ptr;
++}
++
++static inline uint32_t GetUint32AtOffset(const char* v, int offset) {
++	DCHECK_GE(offset, 0);
++	DCHECK_LE(offset, 4);
++	return UNALIGNED_LOAD32(v + offset);
++}
++
++#endif /* !ARCH_K8 */
++
++
++#define kInputMarginBytes 15
++char*
++csnappy_compress_fragment(
++	const char *input,
++	const uint32_t input_size,
++	char *op,
++	void *working_memory,
++	const int workmem_bytes_power_of_two)
++{
++	const char *ip, *ip_end, *base_ip, *next_emit, *ip_limit, *next_ip,
++			*candidate, *base;
++	uint16_t *table = (uint16_t *)working_memory;
++	EightBytesReference input_bytes;
++	uint32_t hash, next_hash, prev_hash, cur_hash, skip, candidate_bytes;
++	int shift, matched;
++
++	DCHECK_GE(workmem_bytes_power_of_two, 9);
++	DCHECK_LE(workmem_bytes_power_of_two, 15);
++	/* Table of 2^X bytes, need (X-1) bits to address table of uint16_t.
++	 * How many bits of 32bit hash function result are discarded? */
++	shift = 33 - workmem_bytes_power_of_two;
++	/* "ip" is the input pointer, and "op" is the output pointer. */
++	ip = input;
++	DCHECK_LE(input_size, kBlockSize);
++	ip_end = input + input_size;
++	base_ip = ip;
++	/* Bytes in [next_emit, ip) will be emitted as literal bytes. Or
++	   [next_emit, ip_end) after the main loop. */
++	next_emit = ip;
++
++	if (unlikely(input_size < kInputMarginBytes))
++		goto emit_remainder;
++
++	memset(working_memory, 0, 1 << workmem_bytes_power_of_two);
++
++	ip_limit = input + input_size - kInputMarginBytes;
++	next_hash = Hash(++ip, shift);
++
++main_loop:
++	DCHECK_LT(next_emit, ip);
++	/*
++	* The body of this loop calls EmitLiteral once and then EmitCopy one or
++	* more times. (The exception is that when we're close to exhausting
++	* the input we goto emit_remainder.)
++	*
++	* In the first iteration of this loop we're just starting, so
++	* there's nothing to copy, so calling EmitLiteral once is
++	* necessary. And we only start a new iteration when the
++	* current iteration has determined that a call to EmitLiteral will
++	* precede the next call to EmitCopy (if any).
++	*
++	* Step 1: Scan forward in the input looking for a 4-byte-long match.
++	* If we get close to exhausting the input then goto emit_remainder.
++	*
++	* Heuristic match skipping: If 32 bytes are scanned with no matches
++	* found, start looking only at every other byte. If 32 more bytes are
++	* scanned, look at every third byte, etc.. When a match is found,
++	* immediately go back to looking at every byte. This is a small loss
++	* (~5% performance, ~0.1% density) for compressible data due to more
++	* bookkeeping, but for non-compressible data (such as JPEG) it's a huge
++	* win since the compressor quickly "realizes" the data is incompressible
++	* and doesn't bother looking for matches everywhere.
++	*
++	* The "skip" variable keeps track of how many bytes there are since the
++	* last match; dividing it by 32 (ie. right-shifting by five) gives the
++	* number of bytes to move ahead for each iteration.
++	*/
++	skip = 32;
++
++	next_ip = ip;
++	do {
++		ip = next_ip;
++		hash = next_hash;
++		DCHECK_EQ(hash, Hash(ip, shift));
++		next_ip = ip + (skip++ >> 5);
++		if (unlikely(next_ip > ip_limit))
++			goto emit_remainder;
++		next_hash = Hash(next_ip, shift);
++		candidate = base_ip + table[hash];
++		DCHECK_GE(candidate, base_ip);
++		DCHECK_LT(candidate, ip);
++
++		table[hash] = ip - base_ip;
++	} while (likely(UNALIGNED_LOAD32(ip) !=
++			UNALIGNED_LOAD32(candidate)));
++
++	/*
++	* Step 2: A 4-byte match has been found. We'll later see if more
++	* than 4 bytes match. But, prior to the match, input
++	* bytes [next_emit, ip) are unmatched. Emit them as "literal bytes."
++	*/
++	DCHECK_LE(next_emit + 16, ip_end);
++	op = EmitLiteral(op, next_emit, ip - next_emit, 1);
++
++	/*
++	* Step 3: Call EmitCopy, and then see if another EmitCopy could
++	* be our next move. Repeat until we find no match for the
++	* input immediately after what was consumed by the last EmitCopy call.
++	*
++	* If we exit this loop normally then we need to call EmitLiteral next,
++	* though we don't yet know how big the literal will be. We handle that
++	* by proceeding to the next iteration of the main loop. We also can exit
++	* this loop via goto if we get close to exhausting the input.
++	*/
++	candidate_bytes = 0;
++
++	do {
++		/* We have a 4-byte match at ip, and no need to emit any
++		 "literal bytes" prior to ip. */
++		base = ip;
++		matched = 4 + FindMatchLength(candidate + 4, ip + 4, ip_end);
++		ip += matched;
++		DCHECK_EQ(0, memcmp(base, candidate, matched));
++		op = EmitCopy(op, base - candidate, matched);
++		/* We could immediately start working at ip now, but to improve
++		 compression we first update table[Hash(ip - 1, ...)]. */
++		next_emit = ip;
++		if (unlikely(ip >= ip_limit))
++			goto emit_remainder;
++		input_bytes = GetEightBytesAt(ip - 1);
++		prev_hash = HashBytes(GetUint32AtOffset(input_bytes, 0), shift);
++		table[prev_hash] = ip - base_ip - 1;
++		cur_hash = HashBytes(GetUint32AtOffset(input_bytes, 1), shift);
++		candidate = base_ip + table[cur_hash];
++		candidate_bytes = UNALIGNED_LOAD32(candidate);
++		table[cur_hash] = ip - base_ip;
++	} while (GetUint32AtOffset(input_bytes, 1) == candidate_bytes);
++
++	next_hash = HashBytes(GetUint32AtOffset(input_bytes, 2), shift);
++	++ip;
++	goto main_loop;
++
++emit_remainder:
++	/* Emit the remaining bytes as a literal */
++	if (next_emit < ip_end)
++		op = EmitLiteral(op, next_emit, ip_end - next_emit, 0);
++
++	return op;
++}
++#if defined(__KERNEL__) && !defined(STATIC)
++EXPORT_SYMBOL(csnappy_compress_fragment);
++#endif
++
++uint32_t __attribute__((const))
++csnappy_max_compressed_length(uint32_t source_len)
++{
++	return 32 + source_len + source_len/6;
++}
++#if defined(__KERNEL__) && !defined(STATIC)
++EXPORT_SYMBOL(csnappy_max_compressed_length);
++#endif
++
++void
++csnappy_compress(
++	const char *input,
++	uint32_t input_length,
++	char *compressed,
++	uint32_t *compressed_length,
++	void *working_memory,
++	const int workmem_bytes_power_of_two)
++{
++	int workmem_size;
++	int num_to_read;
++	uint32_t written = 0;
++	char *p = encode_varint32(compressed, input_length);
++	written += (p - compressed);
++	compressed = p;
++	while (input_length > 0) {
++		num_to_read = min(input_length, (uint32_t)kBlockSize);
++		workmem_size = workmem_bytes_power_of_two;
++		if (num_to_read < kBlockSize) {
++			for (workmem_size = 9;
++			     workmem_size < workmem_bytes_power_of_two;
++			     ++workmem_size) {
++				if ((1 << (workmem_size-1)) >= num_to_read)
++					break;
++			}
++		}
++		p = csnappy_compress_fragment(
++				input, num_to_read, compressed,
++				working_memory, workmem_size);
++		written += (p - compressed);
++		compressed = p;
++		input_length -= num_to_read;
++		input += num_to_read;
++	}
++	*compressed_length = written;
++}
++#if defined(__KERNEL__) && !defined(STATIC)
++EXPORT_SYMBOL(csnappy_compress);
++
++MODULE_LICENSE("BSD");
++MODULE_DESCRIPTION("Snappy Compressor");
++#endif
+diff --git a/drivers/staging/snappy/csnappy_decompress.c b/drivers/staging/snappy/csnappy_decompress.c
+new file mode 100644
+index 0000000..572ce43
+--- /dev/null
++++ b/drivers/staging/snappy/csnappy_decompress.c
+@@ -0,0 +1,413 @@
++/*
++Copyright 2011, Google Inc.
++All rights reserved.
++
++Redistribution and use in source and binary forms, with or without
++modification, are permitted provided that the following conditions are
++met:
++
++  * Redistributions of source code must retain the above copyright
++notice, this list of conditions and the following disclaimer.
++  * Redistributions in binary form must reproduce the above
++copyright notice, this list of conditions and the following disclaimer
++in the documentation and/or other materials provided with the
++distribution.
++  * Neither the name of Google Inc. nor the names of its
++contributors may be used to endorse or promote products derived from
++this software without specific prior written permission.
++
++THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++
++File modified for the Linux Kernel by
++Zeev Tarantov <zeev.tarantov@gmail.com>
++*/
++
++#include "csnappy_internal.h"
++#ifdef __KERNEL__
++#include <linux/kernel.h>
++#include <linux/module.h>
++#endif
++#include "csnappy.h"
++
++int
++csnappy_get_uncompressed_length(
++	const char *src,
++	uint32_t src_len,
++	uint32_t *result)
++{
++	const char *src_base = src;
++	uint32_t shift = 0;
++	uint8_t c;
++	/* Length is encoded in 1..5 bytes */
++	*result = 0;
++	for (;;) {
++		if (shift >= 32)
++			goto err_out;
++		if (src_len == 0)
++			goto err_out;
++		c = *(const uint8_t *)src++;
++		src_len -= 1;
++		*result |= (uint32_t)(c & 0x7f) << shift;
++		if (c < 128)
++			break;
++		shift += 7;
++	}
++	return src - src_base;
++err_out:
++	return CSNAPPY_E_HEADER_BAD;
++}
++#if defined(__KERNEL__) && !defined(STATIC)
++EXPORT_SYMBOL(csnappy_get_uncompressed_length);
++#endif
++
++#if defined(__arm__) && !(ARCH_ARM_HAVE_UNALIGNED)
++int csnappy_decompress_noheader(
++	const char	*src_,
++	uint32_t	src_remaining,
++	char		*dst,
++	uint32_t	*dst_len)
++{
++	const uint8_t * src = (const uint8_t *)src_;
++	const uint8_t * const src_end = src + src_remaining;
++	char * const dst_base = dst;
++	char * const dst_end = dst + *dst_len;
++	while (src < src_end) {
++		uint32_t opcode = *src++;
++		uint32_t length = (opcode >> 2) + 1;
++		const uint8_t *copy_src;
++		if (likely((opcode & 3) == 0)) {
++			if (unlikely(length > 60)) {
++				uint32_t extra_bytes = length - 60;
++				if (unlikely(src + extra_bytes > src_end))
++					return CSNAPPY_E_DATA_MALFORMED;
++				length = 0;
++				for (int shift = 0, max_shift = extra_bytes*8;
++					shift < max_shift;
++					shift += 8)
++					length |= *src++ << shift;
++				++length;
++			}
++			if (unlikely(src + length > src_end))
++				return CSNAPPY_E_DATA_MALFORMED;
++			copy_src = src;
++			src += length;
++		} else {
++			uint32_t offset;
++			if (likely((opcode & 3) == 1)) {
++				if (unlikely(src + 1 > src_end))
++					return CSNAPPY_E_DATA_MALFORMED;
++				length = ((length - 1) & 7) + 4;
++				offset = ((opcode >> 5) << 8) + *src++;
++			} else if (likely((opcode & 3) == 2)) {
++				if (unlikely(src + 2 > src_end))
++					return CSNAPPY_E_DATA_MALFORMED;
++				offset = src[0] | (src[1] << 8);
++				src += 2;
++			} else {
++				if (unlikely(src + 4 > src_end))
++					return CSNAPPY_E_DATA_MALFORMED;
++				offset = src[0] | (src[1] << 8) |
++					 (src[2] << 16) | (src[3] << 24);
++				src += 4;
++			}
++			if (unlikely(!offset || (offset > dst - dst_base)))
++				return CSNAPPY_E_DATA_MALFORMED;
++			copy_src = (const uint8_t *)dst - offset;
++		}
++		if (unlikely(dst + length > dst_end))
++			return CSNAPPY_E_OUTPUT_OVERRUN;
++		do *dst++ = *copy_src++; while (--length);
++	}
++	*dst_len = dst - dst_base;
++	return CSNAPPY_E_OK;
++}
++#else /* !(arm with no unaligned access) */
++/*
++ * Data stored per entry in lookup table:
++ *      Range   Bits-used       Description
++ *      ------------------------------------
++ *      1..64   0..7            Literal/copy length encoded in opcode byte
++ *      0..7    8..10           Copy offset encoded in opcode byte / 256
++ *      0..4    11..13          Extra bytes after opcode
++ *
++ * We use eight bits for the length even though 7 would have sufficed
++ * because of efficiency reasons:
++ *      (1) Extracting a byte is faster than a bit-field
++ *      (2) It properly aligns copy offset so we do not need a <<8
++ */
++static const uint16_t char_table[256] = {
++	0x0001, 0x0804, 0x1001, 0x2001, 0x0002, 0x0805, 0x1002, 0x2002,
++	0x0003, 0x0806, 0x1003, 0x2003, 0x0004, 0x0807, 0x1004, 0x2004,
++	0x0005, 0x0808, 0x1005, 0x2005, 0x0006, 0x0809, 0x1006, 0x2006,
++	0x0007, 0x080a, 0x1007, 0x2007, 0x0008, 0x080b, 0x1008, 0x2008,
++	0x0009, 0x0904, 0x1009, 0x2009, 0x000a, 0x0905, 0x100a, 0x200a,
++	0x000b, 0x0906, 0x100b, 0x200b, 0x000c, 0x0907, 0x100c, 0x200c,
++	0x000d, 0x0908, 0x100d, 0x200d, 0x000e, 0x0909, 0x100e, 0x200e,
++	0x000f, 0x090a, 0x100f, 0x200f, 0x0010, 0x090b, 0x1010, 0x2010,
++	0x0011, 0x0a04, 0x1011, 0x2011, 0x0012, 0x0a05, 0x1012, 0x2012,
++	0x0013, 0x0a06, 0x1013, 0x2013, 0x0014, 0x0a07, 0x1014, 0x2014,
++	0x0015, 0x0a08, 0x1015, 0x2015, 0x0016, 0x0a09, 0x1016, 0x2016,
++	0x0017, 0x0a0a, 0x1017, 0x2017, 0x0018, 0x0a0b, 0x1018, 0x2018,
++	0x0019, 0x0b04, 0x1019, 0x2019, 0x001a, 0x0b05, 0x101a, 0x201a,
++	0x001b, 0x0b06, 0x101b, 0x201b, 0x001c, 0x0b07, 0x101c, 0x201c,
++	0x001d, 0x0b08, 0x101d, 0x201d, 0x001e, 0x0b09, 0x101e, 0x201e,
++	0x001f, 0x0b0a, 0x101f, 0x201f, 0x0020, 0x0b0b, 0x1020, 0x2020,
++	0x0021, 0x0c04, 0x1021, 0x2021, 0x0022, 0x0c05, 0x1022, 0x2022,
++	0x0023, 0x0c06, 0x1023, 0x2023, 0x0024, 0x0c07, 0x1024, 0x2024,
++	0x0025, 0x0c08, 0x1025, 0x2025, 0x0026, 0x0c09, 0x1026, 0x2026,
++	0x0027, 0x0c0a, 0x1027, 0x2027, 0x0028, 0x0c0b, 0x1028, 0x2028,
++	0x0029, 0x0d04, 0x1029, 0x2029, 0x002a, 0x0d05, 0x102a, 0x202a,
++	0x002b, 0x0d06, 0x102b, 0x202b, 0x002c, 0x0d07, 0x102c, 0x202c,
++	0x002d, 0x0d08, 0x102d, 0x202d, 0x002e, 0x0d09, 0x102e, 0x202e,
++	0x002f, 0x0d0a, 0x102f, 0x202f, 0x0030, 0x0d0b, 0x1030, 0x2030,
++	0x0031, 0x0e04, 0x1031, 0x2031, 0x0032, 0x0e05, 0x1032, 0x2032,
++	0x0033, 0x0e06, 0x1033, 0x2033, 0x0034, 0x0e07, 0x1034, 0x2034,
++	0x0035, 0x0e08, 0x1035, 0x2035, 0x0036, 0x0e09, 0x1036, 0x2036,
++	0x0037, 0x0e0a, 0x1037, 0x2037, 0x0038, 0x0e0b, 0x1038, 0x2038,
++	0x0039, 0x0f04, 0x1039, 0x2039, 0x003a, 0x0f05, 0x103a, 0x203a,
++	0x003b, 0x0f06, 0x103b, 0x203b, 0x003c, 0x0f07, 0x103c, 0x203c,
++	0x0801, 0x0f08, 0x103d, 0x203d, 0x1001, 0x0f09, 0x103e, 0x203e,
++	0x1801, 0x0f0a, 0x103f, 0x203f, 0x2001, 0x0f0b, 0x1040, 0x2040
++};
++
++/*
++ * Copy "len" bytes from "src" to "op", one byte at a time.  Used for
++ * handling COPY operations where the input and output regions may
++ * overlap.  For example, suppose:
++ *    src    == "ab"
++ *    op     == src + 2
++ *    len    == 20
++ * After IncrementalCopy(src, op, len), the result will have
++ * eleven copies of "ab"
++ *    ababababababababababab
++ * Note that this does not match the semantics of either memcpy()
++ * or memmove().
++ */
++static inline void IncrementalCopy(const char *src, char *op, int len)
++{
++	DCHECK_GT(len, 0);
++	do {
++		*op++ = *src++;
++	} while (--len > 0);
++}
++
++/*
++ * Equivalent to IncrementalCopy except that it can write up to ten extra
++ * bytes after the end of the copy, and that it is faster.
++ *
++ * The main part of this loop is a simple copy of eight bytes at a time until
++ * we've copied (at least) the requested amount of bytes.  However, if op and
++ * src are less than eight bytes apart (indicating a repeating pattern of
++ * length < 8), we first need to expand the pattern in order to get the correct
++ * results. For instance, if the buffer looks like this, with the eight-byte
++ * <src> and <op> patterns marked as intervals:
++ *
++ *    abxxxxxxxxxxxx
++ *    [------]           src
++ *      [------]         op
++ *
++ * a single eight-byte copy from <src> to <op> will repeat the pattern once,
++ * after which we can move <op> two bytes without moving <src>:
++ *
++ *    ababxxxxxxxxxx
++ *    [------]           src
++ *        [------]       op
++ *
++ * and repeat the exercise until the two no longer overlap.
++ *
++ * This allows us to do very well in the special case of one single byte
++ * repeated many times, without taking a big hit for more general cases.
++ *
++ * The worst case of extra writing past the end of the match occurs when
++ * op - src == 1 and len == 1; the last copy will read from byte positions
++ * [0..7] and write to [4..11], whereas it was only supposed to write to
++ * position 1. Thus, ten excess bytes.
++ */
++static const int kMaxIncrementCopyOverflow = 10;
++static inline void IncrementalCopyFastPath(const char *src, char *op, int len)
++{
++	while (op - src < 8) {
++		UnalignedCopy64(src, op);
++		len -= op - src;
++		op += op - src;
++	}
++	while (len > 0) {
++		UnalignedCopy64(src, op);
++		src += 8;
++		op += 8;
++		len -= 8;
++	}
++}
++
++
++/* A type that writes to a flat array. */
++struct SnappyArrayWriter {
++	char *base;
++	char *op;
++	char *op_limit;
++};
++
++static inline int
++SAW__AppendFastPath(struct SnappyArrayWriter *this,
++		    const char *ip, uint32_t len)
++{
++	char *op = this->op;
++	const int space_left = this->op_limit - op;
++	if (likely(space_left >= 16)) {
++		UnalignedCopy64(ip, op);
++		UnalignedCopy64(ip + 8, op + 8);
++	} else {
++		if (unlikely(space_left < len))
++			return CSNAPPY_E_OUTPUT_OVERRUN;
++		memcpy(op, ip, len);
++	}
++	this->op = op + len;
++	return CSNAPPY_E_OK;
++}
++
++static inline int
++SAW__Append(struct SnappyArrayWriter *this,
++	    const char *ip, uint32_t len)
++{
++	char *op = this->op;
++	const int space_left = this->op_limit - op;
++	if (unlikely(space_left < len))
++		return CSNAPPY_E_OUTPUT_OVERRUN;
++	memcpy(op, ip, len);
++	this->op = op + len;
++	return CSNAPPY_E_OK;
++}
++
++static inline int
++SAW__AppendFromSelf(struct SnappyArrayWriter *this,
++		    uint32_t offset, uint32_t len)
++{
++	char *op = this->op;
++	const int space_left = this->op_limit - op;
++	/* -1u catches offset==0 */
++	if (op - this->base <= offset - 1u)
++		return CSNAPPY_E_DATA_MALFORMED;
++	/* Fast path, used for the majority (70-80%) of dynamic invocations. */
++	if (len <= 16 && offset >= 8 && space_left >= 16) {
++		UnalignedCopy64(op - offset, op);
++		UnalignedCopy64(op - offset + 8, op + 8);
++	} else if (space_left >= len + kMaxIncrementCopyOverflow) {
++		IncrementalCopyFastPath(op - offset, op, len);
++	} else {
++		if (space_left < len)
++			return CSNAPPY_E_OUTPUT_OVERRUN;
++		IncrementalCopy(op - offset, op, len);
++	}
++	this->op = op + len;
++	return CSNAPPY_E_OK;
++}
++
++int
++csnappy_decompress_noheader(
++	const char	*src,
++	uint32_t	src_remaining,
++	char		*dst,
++	uint32_t	*dst_len)
++{
++	struct SnappyArrayWriter writer;
++	const char *end_minus5 = src + src_remaining - 5;
++	uint32_t length, trailer, opword, extra_bytes;
++	int ret, available;
++	uint8_t opcode;
++	char scratch[5];
++	writer.op = writer.base = dst;
++	writer.op_limit = writer.op + *dst_len;
++	#define LOOP_COND() \
++	if (unlikely(src >= end_minus5)) {		\
++		available = end_minus5 + 5 - src;	\
++		if (unlikely(available <= 0))		\
++			goto out;			\
++		memmove(scratch, src, available);	\
++		src = scratch;				\
++		end_minus5 = scratch + available - 5;	\
++	}
++	
++	LOOP_COND();
++	for (;;) {
++		opcode = *(const uint8_t *)src++;
++		if (opcode & 0x3) {
++			opword = char_table[opcode];
++			extra_bytes = opword >> 11;
++			trailer = get_unaligned_le(src, extra_bytes);
++			length = opword & 0xff;
++			src += extra_bytes;
++			trailer += opword & 0x700;
++			ret = SAW__AppendFromSelf(&writer, trailer, length);
++			if (ret < 0)
++				return ret;
++			LOOP_COND();
++		} else {
++			length = (opcode >> 2) + 1;
++			available = end_minus5 + 5 - src;
++			if (length <= 16 && available >= 16) {
++				if ((ret = SAW__AppendFastPath(&writer, src, length)) < 0)
++					return ret;
++				src += length;
++				LOOP_COND();
++				continue;
++			}
++			if (unlikely(length > 60)) {
++				extra_bytes = length - 60;
++				length = get_unaligned_le(src, extra_bytes) + 1;
++				src += extra_bytes;
++				available = end_minus5 + 5 - src;
++			}
++			if (unlikely(available < length))
++				return CSNAPPY_E_DATA_MALFORMED;
++			ret = SAW__Append(&writer, src, length);
++			if (ret < 0)
++				return ret;
++			src += length;
++			LOOP_COND();
++		}
++	}
++#undef LOOP_COND
++out:
++	*dst_len = writer.op - writer.base;
++	return CSNAPPY_E_OK;
++}
++#endif /* optimized for unaligned arch */
++
++#if defined(__KERNEL__) && !defined(STATIC)
++EXPORT_SYMBOL(csnappy_decompress_noheader);
++#endif
++
++int
++csnappy_decompress(
++	const char *src,
++	uint32_t src_len,
++	char *dst,
++	uint32_t dst_len)
++{
++	int n;
++	uint32_t olen = 0;
++	/* Read uncompressed length from the front of the compressed input */
++	n = csnappy_get_uncompressed_length(src, src_len, &olen);
++	if (unlikely(n < CSNAPPY_E_OK))
++		return n;
++	/* Protect against possible DoS attack */
++	if (unlikely(olen > dst_len))
++		return CSNAPPY_E_OUTPUT_INSUF;
++	return csnappy_decompress_noheader(src + n, src_len - n, dst, &olen);
++}
++#if defined(__KERNEL__) && !defined(STATIC)
++EXPORT_SYMBOL(csnappy_decompress);
++
++MODULE_LICENSE("BSD");
++MODULE_DESCRIPTION("Snappy Decompressor");
++#endif
+diff --git a/drivers/staging/snappy/csnappy_internal.h b/drivers/staging/snappy/csnappy_internal.h
+new file mode 100644
+index 0000000..5fc7ba1
+--- /dev/null
++++ b/drivers/staging/snappy/csnappy_internal.h
+@@ -0,0 +1,147 @@
++/*
++Copyright 2011 Google Inc. All Rights Reserved.
++
++Redistribution and use in source and binary forms, with or without
++modification, are permitted provided that the following conditions are
++met:
++
++    * Redistributions of source code must retain the above copyright
++notice, this list of conditions and the following disclaimer.
++    * Redistributions in binary form must reproduce the above
++copyright notice, this list of conditions and the following disclaimer
++in the documentation and/or other materials provided with the
++distribution.
++    * Neither the name of Google Inc. nor the names of its
++contributors may be used to endorse or promote products derived from
++this software without specific prior written permission.
++
++THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++
++Various stubs for the open-source version of Snappy.
++
++File modified for the Linux Kernel by
++Zeev Tarantov <zeev.tarantov@gmail.com>
++*/
++
++#ifndef CSNAPPY_INTERNAL_H_
++#define CSNAPPY_INTERNAL_H_
++
++#ifndef __KERNEL__
++#include "csnappy_internal_userspace.h"
++#include <string.h>
++#else
++
++#include <linux/types.h>
++#include <linux/string.h>
++#include <linux/compiler.h>
++#include <asm/byteorder.h>
++#include <asm/unaligned.h>
++
++#if (defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)) || \
++    (!defined(__LITTLE_ENDIAN) && !defined(__BIG_ENDIAN))
++#error either __LITTLE_ENDIAN or __BIG_ENDIAN must be defined
++#endif
++#if defined(__LITTLE_ENDIAN)
++#define __BYTE_ORDER __LITTLE_ENDIAN
++#else
++#define __BYTE_ORDER __BIG_ENDIAN
++#endif
++
++#ifdef DEBUG
++#define DCHECK(cond)	if (!(cond)) \
++			printk(KERN_DEBUG "assert failed @ %s:%i\n", \
++				__FILE__, __LINE__)
++#else
++#define DCHECK(cond)
++#endif
++
++#define UNALIGNED_LOAD16(_p)		get_unaligned((const uint16_t *)(_p))
++#define UNALIGNED_LOAD32(_p)		get_unaligned((const uint32_t *)(_p))
++#define UNALIGNED_LOAD64(_p)		get_unaligned((const uint64_t *)(_p))
++#define UNALIGNED_STORE16(_p, _val)	put_unaligned((_val), (uint16_t *)(_p))
++#define UNALIGNED_STORE32(_p, _val)	put_unaligned((_val), (uint32_t *)(_p))
++#define UNALIGNED_STORE64(_p, _val)	put_unaligned((_val), (uint64_t *)(_p))
++
++#define FindLSBSetNonZero(n)		__builtin_ctz(n)
++#define FindLSBSetNonZero64(n)		__builtin_ctzll(n)
++
++#endif /* __KERNEL__ */
++
++#define ARCH_ARM_HAVE_UNALIGNED \
++    defined(__ARM_ARCH_6__) || defined(__ARM_ARCH_6J__) || defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__) || defined(__ARM_ARCH_6T2__) || defined(__ARMV6__) || \
++    defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__) || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__)
++
++static inline void UnalignedCopy64(const void *src, void *dst) {
++#if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__) || ARCH_ARM_HAVE_UNALIGNED
++  if ((sizeof(void *) == 8) || (sizeof(long) == 8)) {
++    UNALIGNED_STORE64(dst, UNALIGNED_LOAD64(src));
++  } else {
++   /* This can be more efficient than UNALIGNED_LOAD64 + UNALIGNED_STORE64
++      on some platforms, in particular ARM. */
++    const uint8_t *src_bytep = (const uint8_t *)src;
++    uint8_t *dst_bytep = (uint8_t *)dst;
++
++    UNALIGNED_STORE32(dst_bytep, UNALIGNED_LOAD32(src_bytep));
++    UNALIGNED_STORE32(dst_bytep + 4, UNALIGNED_LOAD32(src_bytep + 4));
++  }
++#else
++  const uint8_t *src_bytep = (const uint8_t *)src;
++  uint8_t *dst_bytep = (uint8_t *)dst;
++  dst_bytep[0] = src_bytep[0];
++  dst_bytep[1] = src_bytep[1];
++  dst_bytep[2] = src_bytep[2];
++  dst_bytep[3] = src_bytep[3];
++  dst_bytep[4] = src_bytep[4];
++  dst_bytep[5] = src_bytep[5];
++  dst_bytep[6] = src_bytep[6];
++  dst_bytep[7] = src_bytep[7];
++#endif
++}
++
++#if defined(__arm__)
++  #if ARCH_ARM_HAVE_UNALIGNED
++     static inline uint32_t get_unaligned_le(const void *p, uint32_t n)
++     {
++       uint32_t wordmask = (1U << (8 * n)) - 1;
++       return get_unaligned_le32(p) & wordmask;
++     }
++  #else
++     extern uint32_t get_unaligned_le_armv5(const void *p, uint32_t n);
++     #define get_unaligned_le get_unaligned_le_armv5
++  #endif
++#else
++  static inline uint32_t get_unaligned_le(const void *p, uint32_t n)
++  {
++    /* Mapping from i in range [0,4] to a mask to extract the bottom 8*i bits */
++    static const uint32_t wordmask[] = {
++      0u, 0xffu, 0xffffu, 0xffffffu, 0xffffffffu
++    };
++    return get_unaligned_le32(p) & wordmask[n];
++  }
++#endif
++
++#define DCHECK_EQ(a, b)	DCHECK(((a) == (b)))
++#define DCHECK_NE(a, b)	DCHECK(((a) != (b)))
++#define DCHECK_GT(a, b)	DCHECK(((a) >  (b)))
++#define DCHECK_GE(a, b)	DCHECK(((a) >= (b)))
++#define DCHECK_LT(a, b)	DCHECK(((a) <  (b)))
++#define DCHECK_LE(a, b)	DCHECK(((a) <= (b)))
++
++enum {
++	LITERAL = 0,
++	COPY_1_BYTE_OFFSET = 1,  /* 3 bit length + 3 bits of offset in opcode */
++	COPY_2_BYTE_OFFSET = 2,
++	COPY_4_BYTE_OFFSET = 3
++};
++
++#endif  /* CSNAPPY_INTERNAL_H_ */
+diff --git a/drivers/staging/zram/Kconfig b/drivers/staging/zram/Kconfig
+index 3bec4db..1132f4b 100644
+--- a/drivers/staging/zram/Kconfig
++++ b/drivers/staging/zram/Kconfig
+@@ -6,8 +6,6 @@ config ZRAM
+ 	tristate "Compressed RAM block device support"
+ 	depends on BLOCK && SYSFS
+ 	select XVMALLOC
+-	select LZO_COMPRESS
+-	select LZO_DECOMPRESS
+ 	default n
+ 	help
+ 	  Creates virtual block devices called /dev/zramX (X = 0, 1, ...).
+@@ -28,3 +26,21 @@ config ZRAM_DEBUG
+ 	help
+ 	  This option adds additional debugging code to the compressed
+ 	  RAM block device driver.
++
++choice ZRAM_COMPRESS
++	prompt "compression method"
++	depends on ZRAM
++	default ZRAM_LZO
++	help
++	  Select the compression method used by zram.
++	  LZO is the default. Snappy compresses a bit worse (around ~2%) but
++	  much (~2x) faster, at least on x86-64.
++config ZRAM_LZO
++	bool "LZO compression"
++	select LZO_COMPRESS
++	select LZO_DECOMPRESS
++config ZRAM_SNAPPY
++	bool "Snappy compression"
++	depends on SNAPPY_COMPRESS
++	depends on SNAPPY_DECOMPRESS
++endchoice
+diff --git a/drivers/staging/zram/zram_drv.c b/drivers/staging/zram/zram_drv.c
+index 09de99f..33cf32c 100644
+--- a/drivers/staging/zram/zram_drv.c
++++ b/drivers/staging/zram/zram_drv.c
+@@ -29,12 +29,56 @@
+ #include <linux/genhd.h>
+ #include <linux/highmem.h>
+ #include <linux/slab.h>
+-#include <linux/lzo.h>
+ #include <linux/string.h>
+ #include <linux/vmalloc.h>
+ 
+ #include "zram_drv.h"
+ 
++#if defined(CONFIG_ZRAM_LZO)
++#include <linux/lzo.h>
++#define WMSIZE		LZO1X_MEM_COMPRESS
++#define COMPRESS(s, sl, d, dl, wm)	\
++	lzo1x_1_compress(s, sl, d, dl, wm)
++#define DECOMPRESS(s, sl, d, dl)	\
++	lzo1x_decompress_safe(s, sl, d, dl)
++#elif defined(CONFIG_ZRAM_SNAPPY)
++#include "../snappy/csnappy.h" /* if built in drivers/staging */
++#define WMSIZE_ORDER	((PAGE_SHIFT > 14) ? (15) : (PAGE_SHIFT+1))
++#define WMSIZE		(1 << WMSIZE_ORDER)
++static int
++snappy_compress_(
++	const unsigned char *src,
++	size_t src_len,
++	unsigned char *dst,
++	size_t *dst_len,
++	void *workmem)
++{
++	const unsigned char *end = csnappy_compress_fragment(
++		src, (uint32_t)src_len, dst, workmem, WMSIZE_ORDER);
++	*dst_len = end - dst;
++	return 0;
++}
++static int
++snappy_decompress_(
++	const unsigned char *src,
++	size_t src_len,
++	unsigned char *dst,
++	size_t *dst_len)
++{
++	uint32_t dst_len_ = (uint32_t)*dst_len;
++	int ret = csnappy_decompress_noheader(src, src_len, dst, &dst_len_);
++	*dst_len = (size_t)dst_len_;
++	return ret;
++}
++#define COMPRESS(s, sl, d, dl, wm)	\
++	snappy_compress_(s, sl, d, dl, wm)
++#define DECOMPRESS(s, sl, d, dl)	\
++	snappy_decompress_(s, sl, d, dl)
++#else
++#error either CONFIG_ZRAM_LZO or CONFIG_ZRAM_SNAPPY must be defined
++#endif
++
++
+ /* Globals */
+ static int zram_major;
+ struct zram *zram_devices;
+@@ -257,9 +301,9 @@ static int zram_bvec_read(struct zram *zram, struct bio_vec *bvec,
+ 	cmem = kmap_atomic(zram->table[index].page, KM_USER1) +
+ 		zram->table[index].offset;
+ 
+-	ret = lzo1x_decompress_safe(cmem + sizeof(*zheader),
+-				    xv_get_object_size(cmem) - sizeof(*zheader),
+-				    uncmem, &clen);
++	ret = DECOMPRESS(cmem + sizeof(*zheader),
++			 xv_get_object_size(cmem) - sizeof(*zheader),
++			 uncmem, &clen);
+ 
+ 	if (is_partial_io(bvec)) {
+ 		memcpy(user_mem + bvec->bv_offset, uncmem + offset,
+@@ -271,7 +315,7 @@ static int zram_bvec_read(struct zram *zram, struct bio_vec *bvec,
+ 	kunmap_atomic(user_mem, KM_USER0);
+ 
+ 	/* Should NEVER happen. Return bio error if it does. */
+-	if (unlikely(ret != LZO_E_OK)) {
++	if (unlikely(ret)) {
+ 		pr_err("Decompression failed! err=%d, page=%u\n", ret, index);
+ 		zram_stat64_inc(zram, &zram->stats.failed_reads);
+ 		return ret;
+@@ -305,13 +349,13 @@ static int zram_read_before_write(struct zram *zram, char *mem, u32 index)
+ 		return 0;
+ 	}
+ 
+-	ret = lzo1x_decompress_safe(cmem + sizeof(*zheader),
+-				    xv_get_object_size(cmem) - sizeof(*zheader),
+-				    mem, &clen);
++	ret = DECOMPRESS(cmem + sizeof(*zheader),
++			 xv_get_object_size(cmem) - sizeof(*zheader),
++			 mem, &clen);
+ 	kunmap_atomic(cmem, KM_USER0);
+ 
+ 	/* Should NEVER happen. Return bio error if it does. */
+-	if (unlikely(ret != LZO_E_OK)) {
++	if (unlikely(ret)) {
+ 		pr_err("Decompression failed! err=%d, page=%u\n", ret, index);
+ 		zram_stat64_inc(zram, &zram->stats.failed_reads);
+ 		return ret;
+@@ -377,18 +421,12 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
+ 		goto out;
+ 	}
+ 
+-	ret = lzo1x_1_compress(uncmem, PAGE_SIZE, src, &clen,
+-			       zram->compress_workmem);
++	COMPRESS(uncmem, PAGE_SIZE, src, &clen, zram->compress_workmem);
+ 
+ 	kunmap_atomic(user_mem, KM_USER0);
+ 	if (is_partial_io(bvec))
+ 			kfree(uncmem);
+ 
+-	if (unlikely(ret != LZO_E_OK)) {
+-		pr_err("Compression failed! err=%d\n", ret);
+-		goto out;
+-	}
+-
+ 	/*
+ 	 * Page is incompressible. Store it as-is (uncompressed)
+ 	 * since we do not want to return too many disk write
+@@ -646,7 +684,7 @@ int zram_init_device(struct zram *zram)
+ 
+ 	zram_set_disksize(zram, totalram_pages << PAGE_SHIFT);
+ 
+-	zram->compress_workmem = kzalloc(LZO1X_MEM_COMPRESS, GFP_KERNEL);
++	zram->compress_workmem = kzalloc(WMSIZE, GFP_KERNEL);
+ 	if (!zram->compress_workmem) {
+ 		pr_err("Error allocating compressor working memory!\n");
+ 		ret = -ENOMEM;
