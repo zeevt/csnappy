@@ -160,14 +160,7 @@ Albert Lee
 	!defined(__ARM_ARCH_5E__) && \
 	!defined(__ARM_ARCH_5TE__) && \
 	!defined(__ARM_ARCH_5TEJ__) && \
-	!defined(__MARM_ARMV5__) && \
-	!defined(__ARM_ARCH_6__) && /* ARMv6 fakes unaligned access */ \
-	!defined(__ARM_ARCH_6J__) && \
-	!defined(__ARM_ARCH_6K__) && \
-	!defined(__ARM_ARCH_6Z__) && \
-	!defined(__ARM_ARCH_6ZK__) && \
-	!defined(__ARM_ARCH_6T2__) && \
-	!defined(__ARMV6__)
+	!defined(__MARM_ARMV5__)
 
 #define UNALIGNED_LOAD16(_p) (*(const uint16_t*)(_p))
 #define UNALIGNED_LOAD32(_p) (*(const uint32_t*)(_p))

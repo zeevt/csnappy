@@ -68,6 +68,7 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #endif /* __KERNEL__ */
 
 #if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__) || \
+    defined(__ARM_ARCH_6__) || defined(__ARM_ARCH_6J__) || defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__) || defined(__ARM_ARCH_6T2__) || defined(__ARMV6__) || \
     defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__) || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__)
 static inline void UnalignedCopy64(const void *src, void *dst) {
   if ((sizeof(void *) == 8) || (sizeof(long) == 8)) {
@@ -98,7 +99,8 @@ static void UnalignedCopy64(const void *src, void *dst) {
 #endif
 
 #if defined(__arm__)
-  #if defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__) || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__)
+  #if defined(__ARM_ARCH_6__) || defined(__ARM_ARCH_6J__) || defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__) || defined(__ARM_ARCH_6T2__) || defined(__ARMV6__) || \
+      defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__) || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__)
      static inline uint32_t get_unaligned_le(const void *p, uint32_t n)
      {
        uint32_t wordmask = (1U << (8 * n)) - 1;
