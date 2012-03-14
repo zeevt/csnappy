@@ -133,8 +133,6 @@ Albert Lee
 #define __BYTE_ORDER __BIG_ENDIAN
 #endif
 
-#else 
-#error No byte order macros available for your platform
 #endif
 
 
@@ -243,7 +241,17 @@ static inline void put_unaligned_le16(uint16_t val, void *p)
   UNALIGNED_STORE16(p, bswap_16(val));
 }
 #else
-#error __BYTE_ORDER must be either __LITTLE_ENDIAN or __BIG_ENDIAN
+static inline uint32_t get_unaligned_le32(const void *p)
+{
+  const uint8_t *b = (const uint8_t *)p;
+  return b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24);
+}
+static inline void put_unaligned_le16(uint16_t val, void *p)
+{
+  uint8_t *b = (uint8_t *)p;
+  b[0] = val & 255;
+  b[1] = val >> 8;
+}
 #endif
 
 
