@@ -83,7 +83,7 @@ Albert Lee
 #define bswap_32(x) _byteswap_ulong(x)
 #define bswap_64(x) _byteswap_uint64(x)
 
-#elif defined(__GLIBC__) || defined(__ANDROID__)
+#elif defined(__GLIBC__) || defined(__ANDROID__) || defined(__CYGWIN__)
 
 #include <endian.h>
 #include <byteswap.h>
