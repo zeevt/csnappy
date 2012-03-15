@@ -96,6 +96,6 @@ uninstall:
 	rm -f /usr/lib/libcsnappy.so
 
 clean:
-	rm -f *.o *_debug libcsnappy.so cl_tester endianness endianness_file
+	rm -f *.o *_debug libcsnappy.so cl_tester
 
 .PHONY: .REGEN clean all
