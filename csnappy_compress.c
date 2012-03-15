@@ -83,8 +83,7 @@ encode_varint32(char *sptr, uint32_t v)
 #define kBlockSize (1 << kBlockLog)
 
 
-/* for armv5 */
-#if 1
+#if defined(__arm__) && !(ARCH_ARM_HAVE_UNALIGNED)
 
 static uint8_t* emit_literal(
 	uint8_t *op,
@@ -185,53 +184,49 @@ csnappy_compress_fragment(
 {
 	const uint8_t * const src_start = (const uint8_t *)input;
 	const uint8_t * const src_end_minus4 = src_start + input_size - 4;
-	const uint8_t *src = src_start, *done_upto = src_start, *match;
+	const uint8_t *src = src_start, *done_upto = src_start,
+			*match, *next_src, *loop_end;
 	uint8_t *op = (uint8_t *)dst;
 	uint16_t *wm = (uint16_t *)working_memory;
 	int shift = 33 - workmem_bytes_power_of_two;
-	uint32_t curr_val, curr_hash;
+	uint32_t curr_val, curr_hash, offset, length;
 	if (input_size < 4)
 		goto the_end;
 	memset(wm, 0, 1 << workmem_bytes_power_of_two);
 	curr_val = src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
 	curr_hash = hash(curr_val) >> shift;
-	goto first_time;
 	for (;;) {
-		curr_hash = hash(curr_val) >> shift;
-		match = src_start + wm[curr_hash];
-		DCHECK_LT(match, src);
-		if (src[0] == match[0] &&
-		    src[1] == match[1] &&
-		    src[2] == match[2] &&
-		    src[3] == match[3]) {
-			uint32_t offset = src - match;
-			uint32_t length = 4 + find_match_length(
-				match + 4, src + 4, src_end_minus4 + 4);
-			DCHECK_EQ(memcmp(src, match, length), 0);
-			op = emit_literal(op, done_upto, src);
-			op = emit_copy(op, offset, length);
-			{
-			const uint8_t *temp_src = src;
-			const uint8_t *loop_end = min(src + length - 1,
-						      src_end_minus4);
-			wm[curr_hash] = temp_src - src_start;
-			do {
-				temp_src++;
-				curr_val = (curr_val >> 8) | (temp_src[3] << 24);
-				curr_hash = hash(curr_val) >> shift;
-				wm[curr_hash] = temp_src - src_start;
-			} while (temp_src < loop_end);
-			}
-			src += length;
-			done_upto = src;
-		} else {
-first_time:		wm[curr_hash] = src - src_start;
+		do {
 			src++;
-		}
-		if (src >= src_end_minus4)
-			break;
-		curr_val = (curr_val >> 8) | (src[3] << 24);
-		DCHECK_EQ(curr_val, src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24));
+			if (src >= src_end_minus4)
+				goto the_end;
+			curr_val = (curr_val >> 8) | (src[3] << 24);
+			DCHECK_EQ(curr_val, src[0] | (src[1] << 8) |
+					(src[2] << 16) | (src[3] << 24));
+			curr_hash = hash(curr_val) >> shift;
+			match = src_start + wm[curr_hash];
+			DCHECK_LT(match, src);
+			wm[curr_hash] = src - src_start;
+		} while (likely(src[0] != match[0]) ||
+			 likely(src[1] != match[1]) ||
+			 likely(src[2] != match[2]) ||
+			 likely(src[3] != match[3]));
+		offset = src - match;
+		length = 4 + find_match_length(
+			match + 4, src + 4, src_end_minus4 + 4);
+		DCHECK_EQ(memcmp(src, match, length), 0);
+		op = emit_literal(op, done_upto, src);
+		op = emit_copy(op, offset, length);
+		next_src = src + length - 1;
+		loop_end = min(next_src, src_end_minus4);
+		do {
+			src++;
+			curr_val = (curr_val >> 8) | (src[3] << 24);
+			curr_hash = hash(curr_val) >> shift;
+			wm[curr_hash] = src - src_start;
+		} while (src < loop_end);
+		src = next_src;
+		done_upto = src + 1;
 	}
 the_end:
 	op = emit_literal(op, done_upto, src_end_minus4 + 4);
