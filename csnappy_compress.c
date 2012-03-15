@@ -100,16 +100,12 @@ static uint8_t* emit_literal(
 	} else {
 		/* Encode in upcoming bytes */
 		uint8_t *base = op;
-		int count = 0;
 		op++;
-		while (n > 0) {
+		do {
 			*op++ = n & 0xff;
 			n >>= 8;
-			count++;
-		}
-		DCHECK_GE(count, 1);
-		DCHECK_LE(count, 4);
-		*base = LITERAL | ((59+count) << 2);
+		} while (n > 0);
+		*base = LITERAL | ((59 + (op - base - 1)) << 2);
 	}
 	memcpy(op, src, length);
 	return op + length;
@@ -124,21 +120,19 @@ static uint8_t* emit_copy(
 	
 	/* Emit 64 byte copies but make sure to keep at least four bytes
 	 * reserved */
-	while (len >= 68) {
+	while (unlikely(len >= 68)) {
 		*op++ = COPY_2_BYTE_OFFSET | ((64 - 1) << 2);
-		op[0] = offset & 255;
-		op[1] = offset >> 8;
-		op += 2;
+		*op++ = offset & 255;
+		*op++ = offset >> 8;
 		len -= 64;
 	}
 
 	/* Emit an extra 60 byte copy if have too much data to fit in one
 	 * copy */
-	if (len > 64) {
+	if (unlikely(len > 64)) {
 		*op++ = COPY_2_BYTE_OFFSET | ((60 - 1) << 2);
-		op[0] = offset & 255;
-		op[1] = offset >> 8;
-		op += 2;
+		*op++ = offset & 255;
+		*op++ = offset >> 8;
 		len -= 60;
 	}
 
@@ -152,9 +146,8 @@ static uint8_t* emit_copy(
 		*op++ = offset & 0xff;
 	} else {
 		*op++ = COPY_2_BYTE_OFFSET | ((len-1) << 2);
-		op[0] = offset & 255;
-		op[1] = offset >> 8;
-		op += 2;
+		*op++ = offset & 255;
+		*op++ = offset >> 8;
 	}
 	return op;
 }
@@ -190,7 +183,7 @@ csnappy_compress_fragment(
 	uint16_t *wm = (uint16_t *)working_memory;
 	int shift = 33 - workmem_bytes_power_of_two;
 	uint32_t curr_val, curr_hash, offset, length;
-	if (input_size < 4)
+	if (unlikely(input_size < 4))
 		goto the_end;
 	memset(wm, 0, 1 << workmem_bytes_power_of_two);
 	curr_val = src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
@@ -653,7 +646,7 @@ csnappy_compress(
 	while (input_length > 0) {
 		num_to_read = min(input_length, (uint32_t)kBlockSize);
 		workmem_size = workmem_bytes_power_of_two;
-		if (num_to_read < kBlockSize) {
+		if (unlikely(num_to_read < kBlockSize)) {
 			for (workmem_size = 9;
 			     workmem_size < workmem_bytes_power_of_two;
 			     ++workmem_size) {
