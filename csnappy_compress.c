@@ -185,9 +185,8 @@ csnappy_compress_fragment(
 	if (unlikely(input_size < 4))
 		goto the_end;
 	memset(wm, 0, 1 << workmem_bytes_power_of_two);
-	curr_val = get_unaligned_le32(src);
-	curr_hash = hash(curr_val) >> shift;
 	for (;;) {
+		curr_val = (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
 		do {
 			src++;
 			if (unlikely(src >= src_end_minus4))
@@ -208,7 +207,6 @@ csnappy_compress_fragment(
 		op = emit_copy(op, offset, length);
 		done_upto = src + length;
 		src = done_upto - 1;
-		curr_val = (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
 	}
 the_end:
 	op = emit_literal(op, done_upto, src_end_minus4 + 4);
