@@ -21,13 +21,12 @@ To cause less confusion, I call this project (and files) csnappy.
 The API looks right, but I welcome comments.
 The code *has* been tested in kernel-space using a patched zram and it works.
 
-The code has been tested in a qemu environment emulating a PowerPC mac running
- Debian 6. It works in userspace and in kernel space, using Linux 2.6.38.2 + 
- snappy patch. Performance, under qemu full system emulation of ppc32 on amd64, 
- in user space and kernel space, is worse than LZO. I would like to know about
- benchmarks performed on real hardware and possibly with a newer compiler than
- gcc 4.4. Compressed files produced by ppc32 snappy are *not* the same as those
- produced by amd64 snappy, but do decompress correctly.
+The code has been tested in a qemu emulating a PowerPC Mac and ARMv5TE running
+ Debian Wheezy.
+
+I also use an ARMv6 Android phone for testing.
+
+Testing on other hardware or platforms is welcome.
 
 Note: The userspace tester is a hack, as is the shared library.
 
