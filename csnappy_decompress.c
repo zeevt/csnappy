@@ -88,7 +88,7 @@ int csnappy_decompress_noheader(
 		if (likely((opcode & 3) == 0)) {
 			if (unlikely(length > 60)) {
 				uint32_t extra_bytes = length - 60;
-				int shift;
+				int shift, max_shift;
 				if (unlikely(src + extra_bytes > src_end))
 					return CSNAPPY_E_DATA_MALFORMED;
 				length = 0;
