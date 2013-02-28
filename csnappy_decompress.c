@@ -30,6 +30,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 File modified for the Linux Kernel by
 Zeev Tarantov <zeev.tarantov@gmail.com>
+
+File modified for Sereal by
+Steffen Mueller <smueller@cpan.org>
 */
 
 #include "csnappy_internal.h"
@@ -194,7 +197,7 @@ static const uint16_t char_table[256] = {
  * Note that this does not match the semantics of either memcpy()
  * or memmove().
  */
-static inline void IncrementalCopy(const char *src, char *op, int len)
+static INLINE void IncrementalCopy(const char *src, char *op, int len)
 {
 	DCHECK_GT(len, 0);
 	do {
@@ -235,7 +238,7 @@ static inline void IncrementalCopy(const char *src, char *op, int len)
  * position 1. Thus, ten excess bytes.
  */
 static const int kMaxIncrementCopyOverflow = 10;
-static inline void IncrementalCopyFastPath(const char *src, char *op, int len)
+static INLINE void IncrementalCopyFastPath(const char *src, char *op, int len)
 {
 	while (op - src < 8) {
 		UnalignedCopy64(src, op);
@@ -258,7 +261,7 @@ struct SnappyArrayWriter {
 	char *op_limit;
 };
 
-static inline int
+static INLINE int
 SAW__AppendFastPath(struct SnappyArrayWriter *this,
 		    const char *ip, uint32_t len)
 {
@@ -268,7 +271,7 @@ SAW__AppendFastPath(struct SnappyArrayWriter *this,
 		UnalignedCopy64(ip, op);
 		UnalignedCopy64(ip + 8, op + 8);
 	} else {
-		if (unlikely(space_left < len))
+                if (unlikely(space_left < (int32_t)len))
 			return CSNAPPY_E_OUTPUT_OVERRUN;
 		memcpy(op, ip, len);
 	}
@@ -276,20 +279,20 @@ SAW__AppendFastPath(struct SnappyArrayWriter *this,
 	return CSNAPPY_E_OK;
 }
 
-static inline int
+static INLINE int
 SAW__Append(struct SnappyArrayWriter *this,
 	    const char *ip, uint32_t len)
 {
 	char *op = this->op;
 	const int space_left = this->op_limit - op;
-	if (unlikely(space_left < len))
+        if (unlikely(space_left < (int32_t)len))
 		return CSNAPPY_E_OUTPUT_OVERRUN;
 	memcpy(op, ip, len);
 	this->op = op + len;
 	return CSNAPPY_E_OK;
 }
 
-static inline int
+static INLINE int
 SAW__AppendFromSelf(struct SnappyArrayWriter *this,
 		    uint32_t offset, uint32_t len)
 {
@@ -302,10 +305,10 @@ SAW__AppendFromSelf(struct SnappyArrayWriter *this,
 	if (len <= 16 && offset >= 8 && space_left >= 16) {
 		UnalignedCopy64(op - offset, op);
 		UnalignedCopy64(op - offset + 8, op + 8);
-	} else if (space_left >= len + kMaxIncrementCopyOverflow) {
+        } else if (space_left >= (int32_t)(len + kMaxIncrementCopyOverflow)) {
 		IncrementalCopyFastPath(op - offset, op, len);
 	} else {
-		if (space_left < len)
+                if (space_left < (int32_t)len)
 			return CSNAPPY_E_OUTPUT_OVERRUN;
 		IncrementalCopy(op - offset, op, len);
 	}
@@ -368,7 +371,7 @@ csnappy_decompress_noheader(
 				src += extra_bytes;
 				available = end_minus5 + 5 - src;
 			}
-			if (unlikely(available < length))
+                        if (unlikely(available < (int32_t)length))
 				return CSNAPPY_E_DATA_MALFORMED;
 			ret = SAW__Append(&writer, src, length);
 			if (ret < 0)
