@@ -1,20 +1,20 @@
 diff --git a/configure.ac b/configure.ac
-index e2864d7..b191bdd 100644
+index d193b0b..35f0775 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -84,6 +84,7 @@ AC_CHECK_LIB([lzo2], [lzo1x_1_15_compress],, [true])
- AC_CHECK_LIB([lzf], [lzf_compress],, [true])
- AC_CHECK_LIB([fastlz], [fastlz_compress],, [true])
- AC_CHECK_LIB([quicklz], [qlz_compress],, [true])
-+AC_CHECK_LIB([csnappy], [csnappy_compress],, [true])
+@@ -97,6 +97,7 @@ CHECK_EXT_COMPRESSION_LIB([lzo2], [lzo1x_1_15_compress])
+ CHECK_EXT_COMPRESSION_LIB([lzf], [lzf_compress])
+ CHECK_EXT_COMPRESSION_LIB([fastlz], [fastlz_compress])
+ CHECK_EXT_COMPRESSION_LIB([quicklz], [qlz_compress])
++CHECK_EXT_COMPRESSION_LIB([csnappy], [csnappy_compress])
+ AC_SUBST([UNITTEST_LIBS])
  
  # These are used by snappy-stubs-public.h.in.
- if test "$ac_cv_header_stdint_h" = "yes"; then
 diff --git a/snappy-test.h b/snappy-test.h
-index 18f5b1b..1696747 100644
+index ef6a955..10fd24c 100644
 --- a/snappy-test.h
 +++ b/snappy-test.h
-@@ -115,6 +115,10 @@ extern "C" {
+@@ -120,6 +120,10 @@ extern "C" {
  #include "quicklz.h"
  #endif
  
@@ -26,7 +26,7 @@ index 18f5b1b..1696747 100644
  namespace File {
    void Init() { }
 diff --git a/snappy_unittest.cc b/snappy_unittest.cc
-index b2de246..0533f29 100644
+index f3b9c83..52a8ab3 100644
 --- a/snappy_unittest.cc
 +++ b/snappy_unittest.cc
 @@ -57,6 +57,8 @@ DEFINE_bool(liblzf, false,
@@ -42,12 +42,12 @@ index b2de246..0533f29 100644
  #endif
  
  enum CompressorType {
--  ZLIB, LZO, LIBLZF, QUICKLZ, FASTLZ, SNAPPY,
+-  ZLIB, LZO, LIBLZF, QUICKLZ, FASTLZ, SNAPPY
 +  ZLIB, LZO, LIBLZF, QUICKLZ, FASTLZ, CSNAPPY, SNAPPY,
  };
  
  const char* names[] = {
--  "ZLIB", "LZO", "LIBLZF", "QUICKLZ", "FASTLZ", "SNAPPY",
+-  "ZLIB", "LZO", "LIBLZF", "QUICKLZ", "FASTLZ", "SNAPPY"
 +  "ZLIB", "LZO", "LIBLZF", "QUICKLZ", "FASTLZ", "CSNAPPY", "SNAPPY",
  };
  
@@ -125,7 +125,7 @@ index b2de246..0533f29 100644
           "comp %5.1f MB/s  uncomp %5s MB/s\n",
           x.c_str(),
           block_size/(1<<20),
-@@ -1011,6 +1051,7 @@ static void MeasureFile(const char* fname) {
+@@ -1013,6 +1053,7 @@ static void MeasureFile(const char* fname) {
      if (FLAGS_liblzf)   Measure(input, len, LIBLZF, repeats, 1024<<10);
      if (FLAGS_quicklz)  Measure(input, len, QUICKLZ, repeats, 1024<<10);
      if (FLAGS_fastlz)   Measure(input, len, FASTLZ, repeats, 1024<<10);

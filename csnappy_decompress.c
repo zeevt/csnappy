@@ -30,6 +30,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 File modified for the Linux Kernel by
 Zeev Tarantov <zeev.tarantov@gmail.com>
+
+File modified for Sereal by
+Steffen Mueller <smueller@cpan.org>
 */
 
 #include "csnappy_internal.h"
@@ -39,12 +42,100 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #endif
 #include "csnappy.h"
 
+int
+csnappy_get_uncompressed_length(
+	const char *src,
+	uint32_t src_len,
+	uint32_t *result)
+{
+	const char *src_base = src;
+	uint32_t shift = 0;
+	uint8_t c;
+	/* Length is encoded in 1..5 bytes */
+	*result = 0;
+	for (;;) {
+		if (shift >= 32)
+			goto err_out;
+		if (src_len == 0)
+			goto err_out;
+		c = *(const uint8_t *)src++;
+		src_len -= 1;
+		*result |= (uint32_t)(c & 0x7f) << shift;
+		if (c < 128)
+			break;
+		shift += 7;
+	}
+	return src - src_base;
+err_out:
+	return CSNAPPY_E_HEADER_BAD;
+}
+#if defined(__KERNEL__) && !defined(STATIC)
+EXPORT_SYMBOL(csnappy_get_uncompressed_length);
+#endif
 
-/* Mapping from i in range [0,4] to a mask to extract the bottom 8*i bits */
-static const uint32_t wordmask[] = {
-	0u, 0xffu, 0xffffu, 0xffffffu, 0xffffffffu
-};
-
+#if defined(__arm__) && !(ARCH_ARM_HAVE_UNALIGNED)
+int csnappy_decompress_noheader(
+	const char	*src_,
+	uint32_t	src_remaining,
+	char		*dst,
+	uint32_t	*dst_len)
+{
+	const uint8_t * src = (const uint8_t *)src_;
+	const uint8_t * const src_end = src + src_remaining;
+	char * const dst_base = dst;
+	char * const dst_end = dst + *dst_len;
+	while (src < src_end) {
+		uint32_t opcode = *src++;
+		uint32_t length = (opcode >> 2) + 1;
+		const uint8_t *copy_src;
+		if (likely((opcode & 3) == 0)) {
+			if (unlikely(length > 60)) {
+				uint32_t extra_bytes = length - 60;
+				int shift, max_shift;
+				if (unlikely(src + extra_bytes > src_end))
+					return CSNAPPY_E_DATA_MALFORMED;
+				length = 0;
+				for (shift = 0, max_shift = extra_bytes*8;
+					shift < max_shift;
+					shift += 8)
+					length |= *src++ << shift;
+				++length;
+			}
+			if (unlikely(src + length > src_end))
+				return CSNAPPY_E_DATA_MALFORMED;
+			copy_src = src;
+			src += length;
+		} else {
+			uint32_t offset;
+			if (likely((opcode & 3) == 1)) {
+				if (unlikely(src + 1 > src_end))
+					return CSNAPPY_E_DATA_MALFORMED;
+				length = ((length - 1) & 7) + 4;
+				offset = ((opcode >> 5) << 8) + *src++;
+			} else if (likely((opcode & 3) == 2)) {
+				if (unlikely(src + 2 > src_end))
+					return CSNAPPY_E_DATA_MALFORMED;
+				offset = src[0] | (src[1] << 8);
+				src += 2;
+			} else {
+				if (unlikely(src + 4 > src_end))
+					return CSNAPPY_E_DATA_MALFORMED;
+				offset = src[0] | (src[1] << 8) |
+					 (src[2] << 16) | (src[3] << 24);
+				src += 4;
+			}
+			if (unlikely(!offset || (offset > dst - dst_base)))
+				return CSNAPPY_E_DATA_MALFORMED;
+			copy_src = (const uint8_t *)dst - offset;
+		}
+		if (unlikely(dst + length > dst_end))
+			return CSNAPPY_E_OUTPUT_OVERRUN;
+		do *dst++ = *copy_src++; while (--length);
+	}
+	*dst_len = dst - dst_base;
+	return CSNAPPY_E_OK;
+}
+#else /* !(arm with no unaligned access) */
 /*
  * Data stored per entry in lookup table:
  *      Range   Bits-used       Description
@@ -106,7 +197,7 @@ static const uint16_t char_table[256] = {
  * Note that this does not match the semantics of either memcpy()
  * or memmove().
  */
-static inline void IncrementalCopy(const char *src, char *op, int len)
+static INLINE void IncrementalCopy(const char *src, char *op, int len)
 {
 	DCHECK_GT(len, 0);
 	do {
@@ -147,15 +238,15 @@ static inline void IncrementalCopy(const char *src, char *op, int len)
  * position 1. Thus, ten excess bytes.
  */
 static const int kMaxIncrementCopyOverflow = 10;
-static inline void IncrementalCopyFastPath(const char *src, char *op, int len)
+static INLINE void IncrementalCopyFastPath(const char *src, char *op, int len)
 {
 	while (op - src < 8) {
-		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(src));
+		UnalignedCopy64(src, op);
 		len -= op - src;
 		op += op - src;
 	}
 	while (len > 0) {
-		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(src));
+		UnalignedCopy64(src, op);
 		src += 8;
 		op += 8;
 		len -= 8;
@@ -170,18 +261,17 @@ struct SnappyArrayWriter {
 	char *op_limit;
 };
 
-static inline int
-SAW__Append(struct SnappyArrayWriter *this,
-	    const char *ip, uint32_t len, int allow_fast_path)
+static INLINE int
+SAW__AppendFastPath(struct SnappyArrayWriter *this,
+		    const char *ip, uint32_t len)
 {
 	char *op = this->op;
 	const int space_left = this->op_limit - op;
-	/*Fast path, used for the majority (about 90%) of dynamic invocations.*/
-	if (allow_fast_path && len <= 16 && space_left >= 16) {
-		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(ip));
-		UNALIGNED_STORE64(op + 8, UNALIGNED_LOAD64(ip + 8));
+	if (likely(space_left >= 16)) {
+		UnalignedCopy64(ip, op);
+		UnalignedCopy64(ip + 8, op + 8);
 	} else {
-		if (space_left < len)
+                if (unlikely(space_left < (int32_t)len))
 			return CSNAPPY_E_OUTPUT_OVERRUN;
 		memcpy(op, ip, len);
 	}
@@ -189,7 +279,20 @@ SAW__Append(struct SnappyArrayWriter *this,
 	return CSNAPPY_E_OK;
 }
 
-static inline int
+static INLINE int
+SAW__Append(struct SnappyArrayWriter *this,
+	    const char *ip, uint32_t len)
+{
+	char *op = this->op;
+	const int space_left = this->op_limit - op;
+        if (unlikely(space_left < (int32_t)len))
+		return CSNAPPY_E_OUTPUT_OVERRUN;
+	memcpy(op, ip, len);
+	this->op = op + len;
+	return CSNAPPY_E_OK;
+}
+
+static INLINE int
 SAW__AppendFromSelf(struct SnappyArrayWriter *this,
 		    uint32_t offset, uint32_t len)
 {
@@ -200,50 +303,18 @@ SAW__AppendFromSelf(struct SnappyArrayWriter *this,
 		return CSNAPPY_E_DATA_MALFORMED;
 	/* Fast path, used for the majority (70-80%) of dynamic invocations. */
 	if (len <= 16 && offset >= 8 && space_left >= 16) {
-		UNALIGNED_STORE64(op, UNALIGNED_LOAD64(op - offset));
-		UNALIGNED_STORE64(op + 8, UNALIGNED_LOAD64(op - offset + 8));
-	} else if (space_left >= len + kMaxIncrementCopyOverflow) {
+		UnalignedCopy64(op - offset, op);
+		UnalignedCopy64(op - offset + 8, op + 8);
+        } else if (space_left >= (int32_t)(len + kMaxIncrementCopyOverflow)) {
 		IncrementalCopyFastPath(op - offset, op, len);
 	} else {
-		if (space_left < len)
+                if (space_left < (int32_t)len)
 			return CSNAPPY_E_OUTPUT_OVERRUN;
 		IncrementalCopy(op - offset, op, len);
 	}
 	this->op = op + len;
 	return CSNAPPY_E_OK;
 }
-
-
-int
-csnappy_get_uncompressed_length(
-	const char *src,
-	uint32_t src_len,
-	uint32_t *result)
-{
-	const char *src_base = src;
-	uint32_t shift = 0;
-	uint8_t c;
-	/* Length is encoded in 1..5 bytes */
-	*result = 0;
-	for (;;) {
-		if (shift >= 32)
-			goto err_out;
-		if (src_len == 0)
-			goto err_out;
-		c = *(const uint8_t *)src++;
-		src_len -= 1;
-		*result |= (uint32_t)(c & 0x7f) << shift;
-		if (c < 128)
-			break;
-		shift += 7;
-	}
-	return src - src_base;
-err_out:
-	return CSNAPPY_E_HEADER_BAD;
-}
-#if defined(__KERNEL__) && !defined(STATIC)
-EXPORT_SYMBOL(csnappy_get_uncompressed_length);
-#endif
 
 int
 csnappy_decompress_noheader(
@@ -253,44 +324,69 @@ csnappy_decompress_noheader(
 	uint32_t	*dst_len)
 {
 	struct SnappyArrayWriter writer;
+	const char *end_minus5 = src + src_remaining - 5;
 	uint32_t length, trailer, opword, extra_bytes;
-	int ret;
+	int ret, available;
 	uint8_t opcode;
 	char scratch[5];
 	writer.op = writer.base = dst;
 	writer.op_limit = writer.op + *dst_len;
-	while (src_remaining) {
-		if (unlikely(src_remaining < 5)) {
-			memcpy(scratch, src, src_remaining);
-			src = scratch;
-		}
+	#define LOOP_COND() \
+	if (unlikely(src >= end_minus5)) {		\
+		available = end_minus5 + 5 - src;	\
+		if (unlikely(available <= 0))		\
+			goto out;			\
+		memmove(scratch, src, available);	\
+		src = scratch;				\
+		end_minus5 = scratch + available - 5;	\
+	}
+	
+	LOOP_COND();
+	for (;;) {
 		opcode = *(const uint8_t *)src++;
-		opword = char_table[opcode];
-		extra_bytes = opword >> 11;
-		trailer = get_unaligned_le32(src) & wordmask[extra_bytes];
-		src += extra_bytes;
-		src_remaining -= 1 + extra_bytes;
-		length = opword & 0xff;
 		if (opcode & 0x3) {
+			opword = char_table[opcode];
+			extra_bytes = opword >> 11;
+			trailer = get_unaligned_le(src, extra_bytes);
+			length = opword & 0xff;
+			src += extra_bytes;
 			trailer += opword & 0x700;
 			ret = SAW__AppendFromSelf(&writer, trailer, length);
 			if (ret < 0)
 				return ret;
+			LOOP_COND();
 		} else {
-			length += trailer;
-			if (unlikely(src_remaining < length))
+			length = (opcode >> 2) + 1;
+			available = end_minus5 + 5 - src;
+			if (length <= 16 && available >= 16) {
+				if ((ret = SAW__AppendFastPath(&writer, src, length)) < 0)
+					return ret;
+				src += length;
+				LOOP_COND();
+				continue;
+			}
+			if (unlikely(length > 60)) {
+				extra_bytes = length - 60;
+				length = get_unaligned_le(src, extra_bytes) + 1;
+				src += extra_bytes;
+				available = end_minus5 + 5 - src;
+			}
+                        if (unlikely(available < (int32_t)length))
 				return CSNAPPY_E_DATA_MALFORMED;
-			ret = src_remaining >= 16;
-			ret = SAW__Append(&writer, src, length, ret);
+			ret = SAW__Append(&writer, src, length);
 			if (ret < 0)
 				return ret;
 			src += length;
-			src_remaining -= length;
+			LOOP_COND();
 		}
 	}
+#undef LOOP_COND
+out:
 	*dst_len = writer.op - writer.base;
 	return CSNAPPY_E_OK;
 }
+#endif /* optimized for unaligned arch */
+
 #if defined(__KERNEL__) && !defined(STATIC)
 EXPORT_SYMBOL(csnappy_decompress_noheader);
 #endif

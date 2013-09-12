@@ -15,13 +15,13 @@ static int do_decompress(FILE *ifile, FILE *ofile)
 {
 	char *ibuf, *obuf;
 	uint32_t ilen, olen;
-	int status;
+	int status, retval = 0;
 
 	if (!(ibuf = (char *)malloc(MAX_INPUT_SIZE))) {
 		fprintf(stderr, "malloc failed to allocate %d.\n", MAX_INPUT_SIZE);
 		fclose(ifile);
-		fclose(ofile);
-		return 4;
+		retval = 4;
+		goto out;
 	}
 
 	ilen = fread(ibuf, 1, MAX_INPUT_SIZE, ifile);
@@ -29,23 +29,23 @@ static int do_decompress(FILE *ifile, FILE *ofile)
 		fprintf(stderr, "input was longer than %d, aborting.\n", MAX_INPUT_SIZE);
 		free(ibuf);
 		fclose(ifile);
-		fclose(ofile);
-		return 5;
+		retval = 5;
+		goto out;
 	}
 	fclose(ifile);
 
 	if ((status = csnappy_get_uncompressed_length(ibuf, ilen, &olen)) < 0) {
 		fprintf(stderr, "snappy_get_uncompressed_length returned %d.\n", status);
 		free(ibuf);
-		fclose(ofile);
-		return 6;
+		retval = 6;
+		goto out;
 	}
 
 	if (!(obuf = (char *)malloc(olen))) {
 		fprintf(stderr, "malloc failed to allocate %d.\n", (int)olen);
 		free(ibuf);
-		fclose(ofile);
-		return 4;
+		retval = 4;
+		goto out;
 	}
 
 	status = csnappy_decompress(ibuf, ilen, obuf, olen);
@@ -53,14 +53,15 @@ static int do_decompress(FILE *ifile, FILE *ofile)
 	if (status != CSNAPPY_E_OK) {
 		fprintf(stderr, "snappy_decompress returned %d.\n", status);
 		free(obuf);
-		fclose(ofile);
-		return 7;
+		retval = 7;
+		goto out;
 	}
 
 	fwrite(obuf, 1, olen, ofile);
-	fclose(ofile);
 	free(obuf);
-	return 0;
+out:
+	fclose(ofile);
+	return retval;
 }
 
 static int do_compress(FILE *ifile, FILE *ofile)

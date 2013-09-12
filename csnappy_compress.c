@@ -30,6 +30,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 File modified for the Linux Kernel by
 Zeev Tarantov <zeev.tarantov@gmail.com>
+
+File modified for Sereal by
+Steffen Mueller <smueller@cpan.org>
 */
 
 #include "csnappy_internal.h"
@@ -40,7 +43,7 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 #include "csnappy.h"
 
 
-static inline char*
+static INLINE char*
 encode_varint32(char *sptr, uint32_t v)
 {
 	uint8_t* ptr = (uint8_t *)sptr;
@@ -69,25 +72,6 @@ encode_varint32(char *sptr, uint32_t v)
 	return (char *)ptr;
 }
 
-
-/*
- * Any hash function will produce a valid compressed bitstream, but a good
- * hash function reduces the number of collisions and thus yields better
- * compression for compressible input, and more speed for incompressible
- * input. Of course, it doesn't hurt if the hash function is reasonably fast
- * either, as it gets called a lot.
- */
-static inline uint32_t HashBytes(uint32_t bytes, int shift)
-{
-	uint32_t kMul = 0x1e35a7bd;
-	return (bytes * kMul) >> shift;
-}
-static inline uint32_t Hash(const char *p, int shift)
-{
-	return HashBytes(UNALIGNED_LOAD32(p), shift);
-}
-
-
 /*
  * *** DO NOT CHANGE THE VALUE OF kBlockSize ***
 
@@ -100,6 +84,156 @@ static inline uint32_t Hash(const char *p, int shift)
  */
 #define kBlockLog 15
 #define kBlockSize (1 << kBlockLog)
+
+
+#if defined(__arm__) && !(ARCH_ARM_HAVE_UNALIGNED)
+
+static uint8_t* emit_literal(
+	uint8_t *op,
+	const uint8_t *src,
+	const uint8_t *end)
+{
+	uint32_t length = end - src;
+	uint32_t n = length - 1;
+	if (!length)
+		return op;
+	if (n < 60) {
+		/* Fits in tag byte */
+		*op++ = LITERAL | (n << 2);
+	} else {
+		/* Encode in upcoming bytes */
+		uint8_t *base = op;
+		op++;
+		do {
+			*op++ = n & 0xff;
+			n >>= 8;
+		} while (n > 0);
+		*base = LITERAL | ((59 + (op - base - 1)) << 2);
+	}
+	memcpy(op, src, length);
+	return op + length;
+}
+
+static uint8_t* emit_copy(
+	uint8_t *op,
+	uint32_t offset,
+	uint32_t len)
+{
+	DCHECK_GT(offset, 0);
+	
+	/* Emit 64 byte copies but make sure to keep at least four bytes
+	 * reserved */
+	while (unlikely(len >= 68)) {
+		*op++ = COPY_2_BYTE_OFFSET | ((64 - 1) << 2);
+		*op++ = offset & 255;
+		*op++ = offset >> 8;
+		len -= 64;
+	}
+
+	/* Emit an extra 60 byte copy if have too much data to fit in one
+	 * copy */
+	if (unlikely(len > 64)) {
+		*op++ = COPY_2_BYTE_OFFSET | ((60 - 1) << 2);
+		*op++ = offset & 255;
+		*op++ = offset >> 8;
+		len -= 60;
+	}
+
+	/* Emit remainder */
+	DCHECK_GE(len, 4);
+	if ((len < 12) && (offset < 2048)) {
+		int len_minus_4 = len - 4;
+		*op++ = COPY_1_BYTE_OFFSET   |
+			((len_minus_4) << 2) |
+			((offset >> 8) << 5);
+		*op++ = offset & 0xff;
+	} else {
+		*op++ = COPY_2_BYTE_OFFSET | ((len-1) << 2);
+		*op++ = offset & 255;
+		*op++ = offset >> 8;
+	}
+	return op;
+}
+
+static uint32_t find_match_length(
+	const uint8_t *s1,
+	const uint8_t *s2,
+	const uint8_t *s2_end)
+{
+	const uint8_t * const s2_start = s2;
+	while (s2 < s2_end && *s1++ == *s2++) /*nothing*/;
+	return s2 - s2_start - 1;
+}
+
+static uint32_t hash(uint32_t v)
+{
+	return v * UINT32_C(0x1e35a7bd);
+}
+
+char*
+csnappy_compress_fragment(
+	const char *input,
+	const uint32_t input_size,
+	char *dst,
+	void *working_memory,
+	const int workmem_bytes_power_of_two)
+{
+	const uint8_t * const src_start = (const uint8_t *)input;
+	const uint8_t * const src_end_minus4 = src_start + input_size - 4;
+	const uint8_t *src = src_start, *done_upto = src_start, *match;
+	uint8_t *op = (uint8_t *)dst;
+	uint16_t *wm = (uint16_t *)working_memory;
+	int shift = 33 - workmem_bytes_power_of_two;
+	uint32_t curr_val, curr_hash, match_val, offset, length;
+	if (unlikely(input_size < 4))
+		goto the_end;
+	memset(wm, 0, 1 << workmem_bytes_power_of_two);
+	for (;;) {
+		curr_val = (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
+		do {
+			src++;
+			if (unlikely(src >= src_end_minus4))
+				goto the_end;
+			curr_val = (curr_val >> 8) | (src[3] << 24);
+			DCHECK_EQ(curr_val, get_unaligned_le32(src));
+			curr_hash = hash(curr_val) >> shift;
+			match = src_start + wm[curr_hash];
+			DCHECK_LT(match, src);
+			wm[curr_hash] = src - src_start;
+			match_val = get_unaligned_le32(match);
+		} while (likely(curr_val != match_val));
+		offset = src - match;
+		length = 4 + find_match_length(
+			match + 4, src + 4, src_end_minus4 + 4);
+		DCHECK_EQ(memcmp(src, match, length), 0);
+		op = emit_literal(op, done_upto, src);
+		op = emit_copy(op, offset, length);
+		done_upto = src + length;
+		src = done_upto - 1;
+	}
+the_end:
+	op = emit_literal(op, done_upto, src_end_minus4 + 4);
+	return (char *)op;
+}
+
+#else /* !simple */
+
+/*
+ * Any hash function will produce a valid compressed bitstream, but a good
+ * hash function reduces the number of collisions and thus yields better
+ * compression for compressible input, and more speed for incompressible
+ * input. Of course, it doesn't hurt if the hash function is reasonably fast
+ * either, as it gets called a lot.
+ */
+static INLINE uint32_t HashBytes(uint32_t bytes, int shift)
+{
+	uint32_t kMul = 0x1e35a7bd;
+	return (bytes * kMul) >> shift;
+}
+static INLINE uint32_t Hash(const char *p, int shift)
+{
+	return HashBytes(UNALIGNED_LOAD32(p), shift);
+}
 
 
 /*
@@ -116,7 +250,7 @@ static inline uint32_t Hash(const char *p, int shift)
  * x86_64 is little endian.
  */
 #if defined(__x86_64__)
-static inline int
+static INLINE int
 FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 {
 	uint64_t x;
@@ -160,7 +294,7 @@ FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 	return matched;
 }
 #else /* !defined(__x86_64__) */
-static inline int
+static INLINE int
 FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 {
 	/* Implementation based on the x86-64 version, above. */
@@ -172,7 +306,7 @@ FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 		s2 += 4;
 		matched += 4;
 	}
-#if defined(__LITTLE_ENDIAN)
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 	if (s2 <= s2_limit - 4) {
 		uint32_t x = UNALIGNED_LOAD32(s1 + matched) ^
 				UNALIGNED_LOAD32(s2);
@@ -195,7 +329,7 @@ FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 #endif /* !defined(__x86_64__) */
 
 
-static inline char*
+static INLINE char*
 EmitLiteral(char *op, const char *literal, int len, int allow_fast_path)
 {
 	int n = len - 1; /* Zero-length literals are disallowed */
@@ -214,9 +348,8 @@ EmitLiteral(char *op, const char *literal, int len, int allow_fast_path)
 		snappy_max_compressed_length).
 		*/
 		if (allow_fast_path && len <= 16) {
-			UNALIGNED_STORE64(op, UNALIGNED_LOAD64(literal));
-			UNALIGNED_STORE64(op + 8,
-						UNALIGNED_LOAD64(literal + 8));
+			UnalignedCopy64(literal, op);
+			UnalignedCopy64(literal + 8, op + 8);
 			return op + len;
 		}
 	} else {
@@ -237,7 +370,7 @@ EmitLiteral(char *op, const char *literal, int len, int allow_fast_path)
 	return op + len;
 }
 
-static inline char*
+static INLINE char*
 EmitCopyLessThan64(char *op, int offset, int len)
 {
 	DCHECK_LE(len, 64);
@@ -247,19 +380,19 @@ EmitCopyLessThan64(char *op, int offset, int len)
 	if ((len < 12) && (offset < 2048)) {
 		int len_minus_4 = len - 4;
 		DCHECK_LT(len_minus_4, 8); /* Must fit in 3 bits */
-		*op++ = COPY_1_BYTE_OFFSET   |
-			((len_minus_4) << 2) |
+		*op++ = COPY_1_BYTE_OFFSET   +
+			((len_minus_4) << 2) +
 			((offset >> 8) << 5);
 		*op++ = offset & 0xff;
 	} else {
-		*op++ = COPY_2_BYTE_OFFSET | ((len-1) << 2);
+		*op++ = COPY_2_BYTE_OFFSET + ((len-1) << 2);
 		put_unaligned_le16(offset, op);
 		op += 2;
 	}
 	return op;
 }
 
-static inline char*
+static INLINE char*
 EmitCopy(char *op, int offset, int len)
 {
 	/* Emit 64 byte copies but make sure to keep at least four bytes
@@ -283,22 +416,54 @@ EmitCopy(char *op, int offset, int len)
 
 
 /*
- * For 0 <= offset <= 4, GetUint32AtOffset(UNALIGNED_LOAD64(p), offset) will
- * equal UNALIGNED_LOAD32(p + offset).  Motivation: On x86-64 hardware we have
- * empirically found that overlapping loads such as
- *  UNALIGNED_LOAD32(p) ... UNALIGNED_LOAD32(p+1) ... UNALIGNED_LOAD32(p+2)
- * are slower than UNALIGNED_LOAD64(p) followed by shifts and casts to uint32_t.
- */
-static inline uint32_t
-GetUint32AtOffset(uint64_t v, int offset)
-{
-	DCHECK(0 <= offset && offset <= 4);
+For 0 <= offset <= 4, GetUint32AtOffset(GetEightBytesAt(p), offset) will
+equal UNALIGNED_LOAD32(p + offset).  Motivation: On x86-64 hardware we have
+empirically found that overlapping loads such as
+ UNALIGNED_LOAD32(p) ... UNALIGNED_LOAD32(p+1) ... UNALIGNED_LOAD32(p+2)
+are slower than UNALIGNED_LOAD64(p) followed by shifts and casts to uint32.
+
+We have different versions for 64- and 32-bit; ideally we would avoid the
+two functions and just INLINE the UNALIGNED_LOAD64 call into
+GetUint32AtOffset, but GCC (at least not as of 4.6) is seemingly not clever
+enough to avoid loading the value multiple times then. For 64-bit, the load
+is done when GetEightBytesAt() is called, whereas for 32-bit, the load is
+done at GetUint32AtOffset() time.
+*/
+
+#if defined(__x86_64__) || (__SIZEOF_SIZE_T__ == 8)
+
+typedef uint64_t EightBytesReference;
+
+static INLINE EightBytesReference GetEightBytesAt(const char* ptr) {
+	return UNALIGNED_LOAD64(ptr);
+}
+
+static INLINE uint32_t GetUint32AtOffset(uint64_t v, int offset) {
+	DCHECK_GE(offset, 0);
+	DCHECK_LE(offset, 4);
 #ifdef __LITTLE_ENDIAN
 	return v >> (8 * offset);
 #else
 	return v >> (32 - 8 * offset);
 #endif
 }
+
+#else /* !ARCH_K8 */
+
+typedef const char* EightBytesReference;
+
+static INLINE EightBytesReference GetEightBytesAt(const char* ptr) {
+	return ptr;
+}
+
+static INLINE uint32_t GetUint32AtOffset(const char* v, int offset) {
+	DCHECK_GE(offset, 0);
+	DCHECK_LE(offset, 4);
+	return UNALIGNED_LOAD32(v + offset);
+}
+
+#endif /* !ARCH_K8 */
+
 
 #define kInputMarginBytes 15
 char*
@@ -312,7 +477,7 @@ csnappy_compress_fragment(
 	const char *ip, *ip_end, *base_ip, *next_emit, *ip_limit, *next_ip,
 			*candidate, *base;
 	uint16_t *table = (uint16_t *)working_memory;
-	uint64_t input_bytes;
+	EightBytesReference input_bytes;
 	uint32_t hash, next_hash, prev_hash, cur_hash, skip, candidate_bytes;
 	int shift, matched;
 
@@ -404,7 +569,6 @@ main_loop:
 	* by proceeding to the next iteration of the main loop. We also can exit
 	* this loop via goto if we get close to exhausting the input.
 	*/
-	input_bytes = 0;
 	candidate_bytes = 0;
 
 	do {
@@ -420,7 +584,7 @@ main_loop:
 		next_emit = ip;
 		if (unlikely(ip >= ip_limit))
 			goto emit_remainder;
-		input_bytes = UNALIGNED_LOAD64(ip - 1);
+		input_bytes = GetEightBytesAt(ip - 1);
 		prev_hash = HashBytes(GetUint32AtOffset(input_bytes, 0), shift);
 		table[prev_hash] = ip - base_ip - 1;
 		cur_hash = HashBytes(GetUint32AtOffset(input_bytes, 1), shift);
@@ -440,6 +604,7 @@ emit_remainder:
 
 	return op;
 }
+#endif /* !simple */
 #if defined(__KERNEL__) && !defined(STATIC)
 EXPORT_SYMBOL(csnappy_compress_fragment);
 #endif
@@ -471,7 +636,7 @@ csnappy_compress(
 	while (input_length > 0) {
 		num_to_read = min(input_length, (uint32_t)kBlockSize);
 		workmem_size = workmem_bytes_power_of_two;
-		if (num_to_read < kBlockSize) {
+		if (unlikely(num_to_read < kBlockSize)) {
 			for (workmem_size = 9;
 			     workmem_size < workmem_bytes_power_of_two;
 			     ++workmem_size) {

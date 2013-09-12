@@ -1,90 +1,108 @@
 testdata/alice29.txt                     :
 ZLIB:    [b 1M] bytes 152089 ->  54404 35.8%  comp   9.8 MB/s  uncomp 138.0 MB/s
-LZO:     [b 1M] bytes 152089 ->  82691 54.4%  comp  64.6 MB/s  uncomp 206.3 MB/s
+LZO204:  [b 1M] bytes 152089 ->  82691 54.4%  comp  64.6 MB/s  uncomp 206.3 MB/s
+LZO205:  [b 1M] bytes 152089 ->  87825 57.7%  comp 175.4 MB/s  uncomp 240.0 MB/s
 CSNAPPY: [b 1M] bytes 152089 ->  90965 59.8%  comp 173.7 MB/s  uncomp 409.6 MB/s
 SNAPPY:  [b 4M] bytes 152089 ->  90965 59.8%  comp 174.9 MB/s  uncomp 401.6 MB/s
 testdata/asyoulik.txt                    :
 ZLIB:    [b 1M] bytes 125179 ->  48897 39.1%  comp   9.0 MB/s  uncomp 131.0 MB/s
-LZO:     [b 1M] bytes 125179 ->  73217 58.5%  comp  59.6 MB/s  uncomp 202.1 MB/s
+LZO204:  [b 1M] bytes 125179 ->  73217 58.5%  comp  59.6 MB/s  uncomp 202.1 MB/s
+LZO205:  [b 1M] bytes 125179 ->  77041 61.5%  comp 164.4 MB/s  uncomp 237.4 MB/s
 CSNAPPY: [b 1M] bytes 125179 ->  80207 64.1%  comp 163.6 MB/s  uncomp 387.7 MB/s
 SNAPPY:  [b 4M] bytes 125179 ->  80207 64.1%  comp 164.6 MB/s  uncomp 378.9 MB/s
 testdata/cp.html                         :
 ZLIB:    [b 1M] bytes  24603 ->   7961 32.4%  comp  23.0 MB/s  uncomp 142.0 MB/s
-LZO:     [b 1M] bytes  24603 ->  11621 47.2%  comp  66.8 MB/s  uncomp 300.0 MB/s
+LZO204:  [b 1M] bytes  24603 ->  11621 47.2%  comp  66.8 MB/s  uncomp 300.0 MB/s
+LZO205:  [b 1M] bytes  24603 ->  11909 48.4%  comp 218.1 MB/s  uncomp 336.9 MB/s
 CSNAPPY: [b 1M] bytes  24603 ->  11838 48.1%  comp 228.9 MB/s  uncomp 548.1 MB/s
 SNAPPY:  [b 4M] bytes  24603 ->  11838 48.1%  comp 227.6 MB/s  uncomp 523.3 MB/s
 testdata/fields.c                        :
 ZLIB:    [b 1M] bytes  11150 ->   3122 28.0%  comp  25.2 MB/s  uncomp 147.5 MB/s
-LZO:     [b 1M] bytes  11150 ->   4663 41.8%  comp  86.2 MB/s  uncomp 304.5 MB/s
+LZO204:  [b 1M] bytes  11150 ->   4663 41.8%  comp  86.2 MB/s  uncomp 304.5 MB/s
+LZO205:  [b 1M] bytes  11150 ->   4711 42.3%  comp 253.3 MB/s  uncomp 346.1 MB/s
 CSNAPPY: [b 1M] bytes  11150 ->   4728 42.4%  comp 251.7 MB/s  uncomp 536.5 MB/s
 SNAPPY:  [b 4M] bytes  11150 ->   4728 42.4%  comp 249.6 MB/s  uncomp 515.2 MB/s
 testdata/geo.protodata                   :
 ZLIB:    [b 1M] bytes 118588 ->  15131 12.8%  comp  43.2 MB/s  uncomp 310.1 MB/s
-LZO:     [b 1M] bytes 118588 ->  20026 16.9%  comp 150.2 MB/s  uncomp 639.7 MB/s
+LZO204:  [b 1M] bytes 118588 ->  20026 16.9%  comp 150.2 MB/s  uncomp 639.7 MB/s
+LZO205:  [b 1M] bytes 118588 ->  23965 20.2%  comp 487.6 MB/s  uncomp 705.7 MB/s
 CSNAPPY: [b 1M] bytes 118588 ->  27459 23.2%  comp 469.0 MB/s  uncomp 985.8 MB/s
 SNAPPY:  [b 4M] bytes 118588 ->  27459 23.2%  comp 466.1 MB/s  uncomp 954.6 MB/s
 testdata/grammar.lsp                     :
 ZLIB:    [b 1M] bytes   3721 ->   1222 32.8%  comp  24.0 MB/s  uncomp 109.3 MB/s
-LZO:     [b 1M] bytes   3721 ->   1781 47.9%  comp  79.2 MB/s  uncomp 360.8 MB/s
+LZO204:  [b 1M] bytes   3721 ->   1781 47.9%  comp  79.2 MB/s  uncomp 360.8 MB/s
+LZO205:  [b 1M] bytes   3721 ->   1811 48.7%  comp 232.3 MB/s  uncomp 442.2 MB/s
 CSNAPPY: [b 1M] bytes   3721 ->   1800 48.4%  comp 257.6 MB/s  uncomp 612.8 MB/s
 SNAPPY:  [b 4M] bytes   3721 ->   1800 48.4%  comp 250.1 MB/s  uncomp 570.9 MB/s
 testdata/house.jpg                       :
-ZLIB:    [b 1M] bytes 126958 -> 126513 99.6%  comp  19.0 MB/s  uncomp 231.8 MB/s
-LZO:     [b 1M] bytes 126958 -> 127173 100.2%  comp  23.5 MB/s  uncomp 1635.4 MB/s
-CSNAPPY: [b 1M] bytes 126958 -> 126803 99.9%  comp 2365.1 MB/s  uncomp 8190.2 MB/s
-SNAPPY:  [b 4M] bytes 126958 -> 126803 99.9%  comp 2326.8 MB/s  uncomp 8402.5 MB/s
+ZLIB:    [b 1M] bytes 126958 -> 126513 99.6%  comp  19.0 MB/s uncomp 231.8 MB/s
+LZO204: [b 1M] bytes 126958 -> 127173 100.2% comp   23.5 MB/s uncomp 1635.4 MB/s
+LZO205: [b 1M] bytes 126958 -> 127303 100.3% comp 1051.1 MB/s uncomp 3762.4 MB/s
+CSNAPPY: [b 1M] bytes 126958 -> 126803 99.9% comp 2365.1 MB/s uncomp 8190.2 MB/s
+SNAPPY:  [b 4M] bytes 126958 -> 126803 99.9% comp 2326.8 MB/s uncomp 8402.5 MB/s
 testdata/html                            :
 ZLIB:    [b 1M] bytes 102400 ->  13699 13.4%  comp  35.6 MB/s  uncomp 273.4 MB/s
-LZO:     [b 1M] bytes 102400 ->  21027 20.5%  comp 135.7 MB/s  uncomp 494.3 MB/s
+LZO204:  [b 1M] bytes 102400 ->  21027 20.5%  comp 135.7 MB/s  uncomp 494.3 MB/s
+LZO205:  [b 1M] bytes 102400 ->  22547 22.0%  comp 421.6 MB/s  uncomp 557.5 MB/s
 CSNAPPY: [b 1M] bytes 102400 ->  24140 23.6%  comp 425.8 MB/s  uncomp 873.0 MB/s
 SNAPPY:  [b 4M] bytes 102400 ->  24140 23.6%  comp 422.9 MB/s  uncomp 845.4 MB/s
 testdata/html_x_4                        :
 ZLIB:    [b 1M] bytes 409600 ->  53367 13.0%  comp  32.1 MB/s  uncomp 277.7 MB/s
-LZO:     [b 1M] bytes 409600 ->  82980 20.3%  comp 143.3 MB/s  uncomp 487.0 MB/s
+LZO204:  [b 1M] bytes 409600 ->  82980 20.3%  comp 143.3 MB/s  uncomp 487.0 MB/s
+LZO205:  [b 1M] bytes 409600 ->  89475 21.8%  comp 428.2 MB/s  uncomp 556.1 MB/s
 CSNAPPY: [b 1M] bytes 409600 ->  96472 23.6%  comp 423.4 MB/s  uncomp 870.8 MB/s
 SNAPPY:  [b 4M] bytes 409600 ->  96472 23.6%  comp 418.3 MB/s  uncomp 830.5 MB/s
 testdata/kennedy.xls                     :
 ZLIB:    [b 1M] bytes 1029744 -> 203992 19.8%  comp  15.8 MB/s  uncomp 230.0 MB/s
-LZO:     [b 1M] bytes 1029744 -> 357315 34.7%  comp 159.1 MB/s  uncomp 624.6 MB/s
+LZO204:  [b 1M] bytes 1029744 -> 357315 34.7%  comp 159.1 MB/s  uncomp 624.6 MB/s
+LZO205:  [b 1M] bytes 1029744 -> 362984 35.2%  comp 413.2 MB/s  uncomp 736.1 MB/s
 CSNAPPY: [b 1M] bytes 1029744 -> 425735 41.3%  comp 354.9 MB/s  uncomp 564.4 MB/s
 SNAPPY:  [b 4M] bytes 1029744 -> 425735 41.3%  comp 350.0 MB/s  uncomp 513.0 MB/s
 testdata/kppkn.gtb                       :
 ZLIB:    [b 1M] bytes 184320 ->  38751 21.0%  comp   7.2 MB/s  uncomp 180.9 MB/s
-LZO:     [b 1M] bytes 184320 ->  71671 38.9%  comp  98.6 MB/s  uncomp 274.8 MB/s
+LZO204:  [b 1M] bytes 184320 ->  71671 38.9%  comp  98.6 MB/s  uncomp 274.8 MB/s
+LZO205:  [b 1M] bytes 184320 ->  71445 38.8%  comp 295.0 MB/s  uncomp 321.9 MB/s
 CSNAPPY: [b 1M] bytes 184320 ->  70535 38.3%  comp 271.8 MB/s  uncomp 483.8 MB/s
 SNAPPY:  [b 4M] bytes 184320 ->  70535 38.3%  comp 273.9 MB/s  uncomp 464.5 MB/s
 testdata/lcet10.txt                      :
 ZLIB:    [b 1M] bytes 426754 -> 144904 34.0%  comp  10.0 MB/s  uncomp 142.8 MB/s
-LZO:     [b 1M] bytes 426754 -> 221290 51.9%  comp  67.3 MB/s  uncomp 212.3 MB/s
+LZO204:  [b 1M] bytes 426754 -> 221290 51.9%  comp  67.3 MB/s  uncomp 212.3 MB/s
+LZO205:  [b 1M] bytes 426754 -> 236699 55.5%  comp 182.2 MB/s  uncomp 248.3 MB/s
 CSNAPPY: [b 1M] bytes 426754 -> 243710 57.1%  comp 181.7 MB/s  uncomp 437.4 MB/s
 SNAPPY:  [b 4M] bytes 426754 -> 243710 57.1%  comp 183.0 MB/s  uncomp 428.3 MB/s
 testdata/mapreduce-osdi-1.pdf            :
 ZLIB:    [b 1M] bytes  94330 ->  74928 79.4%  comp  22.4 MB/s  uncomp 177.9 MB/s
-LZO:     [b 1M] bytes  94330 ->  76999 81.6%  comp  29.0 MB/s  uncomp 938.7 MB/s
-CSNAPPY: [b 1M] bytes  94330 ->  77477 82.1%  comp 833.6 MB/s  uncomp 2115.4 MB/s
-SNAPPY:  [b 4M] bytes  94330 ->  77477 82.1%  comp 832.2 MB/s  uncomp 1997.5 MB/s
+LZO204:  [b 1M] bytes  94330 ->  76999 81.6%  comp  29.0 MB/s  uncomp 938.7 MB/s
+LZO205:  [b 1M] bytes  94330 -> 94704 100.4% comp 1057.4 MB/s uncomp 3974.6 MB/s
+CSNAPPY: [b 1M] bytes  94330 ->  77477 82.1%  comp 833.6 MB/s uncomp 2115.4 MB/s
+SNAPPY:  [b 4M] bytes  94330 ->  77477 82.1%  comp 832.2 MB/s uncomp 1997.5 MB/s
 testdata/plrabn12.txt                    :
 ZLIB:    [b 1M] bytes 481861 -> 195261 40.5%  comp   7.5 MB/s  uncomp 130.1 MB/s
-LZO:     [b 1M] bytes 481861 -> 294610 61.1%  comp  59.1 MB/s  uncomp 192.3 MB/s
+LZO204:  [b 1M] bytes 481861 -> 294610 61.1%  comp  59.1 MB/s  uncomp 192.3 MB/s
+LZO205:  [b 1M] bytes 481861 -> 314012 65.2%  comp 155.7 MB/s  uncomp 229.7 MB/s
 CSNAPPY: [b 1M] bytes 481861 -> 329339 68.3%  comp 153.4 MB/s  uncomp 363.5 MB/s
 SNAPPY:  [b 4M] bytes 481861 -> 329339 68.3%  comp 154.5 MB/s  uncomp 354.9 MB/s
 testdata/ptt5                            :
 ZLIB:    [b 1M] bytes 513216 ->  56465 11.0%  comp  25.8 MB/s  uncomp 269.0 MB/s
-LZO:     [b 1M] bytes 513216 ->  86232 16.8%  comp 139.7 MB/s  uncomp 590.6 MB/s
+LZO204:  [b 1M] bytes 513216 ->  86232 16.8%  comp 139.7 MB/s  uncomp 590.6 MB/s
+LZO205:  [b 1M] bytes 513216 ->  87278 17.0%  comp 551.6 MB/s  uncomp 667.6 MB/s
 CSNAPPY: [b 1M] bytes 513216 ->  93455 18.2%  comp 555.0 MB/s  uncomp 845.6 MB/s
 SNAPPY:  [b 4M] bytes 513216 ->  93455 18.2%  comp 553.1 MB/s  uncomp 795.0 MB/s
 testdata/sum                             :
 ZLIB:    [b 1M] bytes  38240 ->  12990 34.0%  comp  13.9 MB/s  uncomp 144.6 MB/s
-LZO:     [b 1M] bytes  38240 ->  17686 46.2%  comp  67.1 MB/s  uncomp 311.0 MB/s
+LZO204:  [b 1M] bytes  38240 ->  17686 46.2%  comp  67.1 MB/s  uncomp 311.0 MB/s
+LZO205:  [b 1M] bytes  38240 ->  18086 47.3%  comp 230.6 MB/s  uncomp 373.5 MB/s
 CSNAPPY: [b 1M] bytes  38240 ->  19837 51.9%  comp 228.7 MB/s  uncomp 513.1 MB/s
 SNAPPY:  [b 4M] bytes  38240 ->  19837 51.9%  comp 226.7 MB/s  uncomp 479.2 MB/s
 testdata/urls.10K                        :
 ZLIB:    [b 1M] bytes 702087 -> 222613 31.7%  comp  18.2 MB/s  uncomp 160.0 MB/s
-LZO:     [b 1M] bytes 702087 -> 309320 44.1%  comp  64.5 MB/s  uncomp 309.2 MB/s
+LZO204:  [b 1M] bytes 702087 -> 309320 44.1%  comp  64.5 MB/s  uncomp 309.2 MB/s
+LZO205:  [b 1M] bytes 702087 -> 345814 49.3%  comp 226.3 MB/s  uncomp 376.5 MB/s
 CSNAPPY: [b 1M] bytes 702087 -> 357267 50.9%  comp 240.1 MB/s  uncomp 645.5 MB/s
 SNAPPY:  [b 4M] bytes 702087 -> 357267 50.9%  comp 239.3 MB/s  uncomp 598.7 MB/s
 testdata/xargs.1                         :
 ZLIB:    [b 1M] bytes   4227 ->   1736 41.1%  comp  23.2 MB/s  uncomp 104.0 MB/s
-LZO:     [b 1M] bytes   4227 ->   2450 58.0%  comp  65.2 MB/s  uncomp 333.1 MB/s
+LZO204:  [b 1M] bytes   4227 ->   2450 58.0%  comp  65.2 MB/s  uncomp 333.1 MB/s
+LZO205:  [b 1M] bytes   4227 ->   2468 58.4%  comp 192.3 MB/s  uncomp 392.1 MB/s
 CSNAPPY: [b 1M] bytes   4227 ->   2509 59.4%  comp 215.9 MB/s  uncomp 499.1 MB/s
 SNAPPY:  [b 4M] bytes   4227 ->   2509 59.4%  comp 208.7 MB/s  uncomp 477.0 MB/s
