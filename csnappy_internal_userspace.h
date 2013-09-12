@@ -73,11 +73,11 @@ typedef __int32 int32_t; /* Sereal specific change, see csnappy_decompress.c(271
 #endif
 
 #ifdef _GNU_SOURCE
-#define min(x, y) (__extension__ ({     \
-    typeof(x) _min1 = (x);          \
-    typeof(y) _min2 = (y);          \
-    (void) (&_min1 == &_min2);      \
-    _min1 < _min2 ? _min1 : _min2; }))
+#define min(x, y) (__extension__ ({		\
+	typeof(x) _min1 = (x);			\
+	typeof(y) _min2 = (y);			\
+	(void) (&_min1 == &_min2);		\
+	_min1 < _min2 ? _min1 : _min2; }))
 #else
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #endif
@@ -86,13 +86,13 @@ typedef __int32 int32_t; /* Sereal specific change, see csnappy_decompress.c(271
 #ifndef __GNUC__
 #define __builtin_expect(a,b) a
 #endif
-#define likely(x)   __builtin_expect(!!(x), 1)
-#define unlikely(x) __builtin_expect(!!(x), 0)
+#define likely(x)	__builtin_expect(!!(x), 1)
+#define unlikely(x)	__builtin_expect(!!(x), 0)
 
 
 #ifdef DEBUG
 #include <assert.h>
-#define DCHECK(cond)    assert(cond)
+#define DCHECK(cond)	assert(cond)
 #else
 #define DCHECK(cond)
 #endif
@@ -111,9 +111,9 @@ Albert Lee
 #define bswap_16(x) _byteswap_ushort(x)
 #define bswap_32(x) _byteswap_ulong(x)
 #define bswap_64(x) _byteswap_uint64(x)
-#define __BIG_ENDIAN    4321
-#define __LITTLE_ENDIAN 1234
-#define __BYTE_ORDER    LITTLE_ENDIAN
+#define __BIG_ENDIAN	4321
+#define __LITTLE_ENDIAN	1234
+#define __BYTE_ORDER	LITTLE_ENDIAN
 
 #elif defined(__GLIBC__) || defined(__ANDROID__) || defined(__CYGWIN__)
 
@@ -131,7 +131,7 @@ Albert Lee
 #define __LITTLE_ENDIAN LITTLE_ENDIAN
 #define __BIG_ENDIAN BIG_ENDIAN
 
-#elif defined(__FreeBSD__) || defined(__DragonFlyBSD__) || defined(__NetBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__)
 
 #include <sys/endian.h>
 #define bswap_16(x) bswap16(x)
@@ -187,16 +187,16 @@ Albert Lee
 #define UNALIGNED_STORE64(_p, _val) (*(uint64_t*)(_p) = (_val))
 
 #elif defined(__arm__) && \
-    !defined(__ARM_ARCH_4__) && \
-    !defined(__ARM_ARCH_4T__) && /* http://wiki.debian.org/ArmEabiPort#Choice_of_minimum_CPU */ \
-    !defined(__MARM_ARMV4__) && \
-    !defined(_ARMV4I_) && \
-    !defined(__ARM_ARCH_5__) && \
-    !defined(__ARM_ARCH_5T__) && \
-    !defined(__ARM_ARCH_5E__) && \
-    !defined(__ARM_ARCH_5TE__) && \
-    !defined(__ARM_ARCH_5TEJ__) && \
-    !defined(__MARM_ARMV5__)
+	!defined(__ARM_ARCH_4__) && \
+	!defined(__ARM_ARCH_4T__) && /* http://wiki.debian.org/ArmEabiPort#Choice_of_minimum_CPU */ \
+	!defined(__MARM_ARMV4__) && \
+	!defined(_ARMV4I_) && \
+	!defined(__ARM_ARCH_5__) && \
+	!defined(__ARM_ARCH_5T__) && \
+	!defined(__ARM_ARCH_5E__) && \
+	!defined(__ARM_ARCH_5TE__) && \
+	!defined(__ARM_ARCH_5TEJ__) && \
+	!defined(__MARM_ARMV5__)
 
 #define UNALIGNED_LOAD16(_p) (*(const uint16_t*)(_p))
 #define UNALIGNED_LOAD32(_p) (*(const uint32_t*)(_p))
@@ -209,14 +209,14 @@ struct una_u64 { uint64_t x; };
 
 static INLINE uint64_t UNALIGNED_LOAD64(const void *p)
 {
-    const struct una_u64 *ptr = (const struct una_u64 *)p;
-    return ptr->x;
+	const struct una_u64 *ptr = (const struct una_u64 *)p;
+	return ptr->x;
 }
 
 static INLINE void UNALIGNED_STORE64(void *p, uint64_t v)
 {
-    struct una_u64 *ptr = (struct una_u64 *)p;
-    ptr->x = v;
+	struct una_u64 *ptr = (struct una_u64 *)p;
+	ptr->x = v;
 }
 
 #else /* !(x86 || powerpc) && !(arm && !(old arm architectures)) */
@@ -229,38 +229,38 @@ struct una_u64 { uint64_t x; };
 
 static INLINE uint16_t UNALIGNED_LOAD16(const void *p)
 {
-    const struct una_u16 *ptr = (const struct una_u16 *)p;
-    return ptr->x;
+	const struct una_u16 *ptr = (const struct una_u16 *)p;
+	return ptr->x;
 }
 
 static INLINE uint32_t UNALIGNED_LOAD32(const void *p)
 {
-    const struct una_u32 *ptr = (const struct una_u32 *)p;
-    return ptr->x;
+	const struct una_u32 *ptr = (const struct una_u32 *)p;
+	return ptr->x;
 }
 
 static INLINE uint64_t UNALIGNED_LOAD64(const void *p)
 {
-    const struct una_u64 *ptr = (const struct una_u64 *)p;
-    return ptr->x;
+	const struct una_u64 *ptr = (const struct una_u64 *)p;
+	return ptr->x;
 }
 
 static INLINE void UNALIGNED_STORE16(void *p, uint16_t v)
 {
-    struct una_u16 *ptr = (struct una_u16 *)p;
-    ptr->x = v;
+	struct una_u16 *ptr = (struct una_u16 *)p;
+	ptr->x = v;
 }
 
 static INLINE void UNALIGNED_STORE32(void *p, uint32_t v)
 {
-    struct una_u32 *ptr = (struct una_u32 *)p;
-    ptr->x = v;
+	struct una_u32 *ptr = (struct una_u32 *)p;
+	ptr->x = v;
 }
 
 static INLINE void UNALIGNED_STORE64(void *p, uint64_t v)
 {
-    struct una_u64 *ptr = (struct una_u64 *)p;
-    ptr->x = v;
+	struct una_u64 *ptr = (struct una_u64 *)p;
+	ptr->x = v;
 }
 
 #endif /* !(x86 || powerpc) && !(arm && !armv5 && !armv6) */
@@ -297,41 +297,41 @@ static INLINE void put_unaligned_le16(uint16_t val, void *p)
 
 static INLINE int FindLSBSetNonZero(uint32_t n)
 {
-    return __builtin_ctz(n);
+	return __builtin_ctz(n);
 }
 
 static INLINE int FindLSBSetNonZero64(uint64_t n)
 {
-    return __builtin_ctzll(n);
+	return __builtin_ctzll(n);
 }
 
 #else /* Portable versions. */
 
 static INLINE int FindLSBSetNonZero(uint32_t n)
 {
-    int rc = 31, i, shift;
-    uint32_t x;
-    for (i = 4, shift = 1 << 4; i >= 0; --i) {
-        x = n << shift;
-        if (x != 0) {
-            n = x;
-            rc -= shift;
-        }
-        shift >>= 1;
-    }
-    return rc;
+	int rc = 31, i, shift;
+	uint32_t x;
+	for (i = 4, shift = 1 << 4; i >= 0; --i) {
+		x = n << shift;
+		if (x != 0) {
+			n = x;
+			rc -= shift;
+		}
+		shift >>= 1;
+	}
+	return rc;
 }
 
 /* FindLSBSetNonZero64() is defined in terms of FindLSBSetNonZero(). */
 static INLINE int FindLSBSetNonZero64(uint64_t n)
 {
-    const uint32_t bottombits = (uint32_t)n;
-    if (bottombits == 0) {
-        /* Bottom bits are zero, so scan in top bits */
-        return 32 + FindLSBSetNonZero((uint32_t)(n >> 32));
-    } else {
-        return FindLSBSetNonZero(bottombits);
-    }
+	const uint32_t bottombits = (uint32_t)n;
+	if (bottombits == 0) {
+		/* Bottom bits are zero, so scan in top bits */
+		return 32 + FindLSBSetNonZero((uint32_t)(n >> 32));
+	} else {
+		return FindLSBSetNonZero(bottombits);
+	}
 }
 
 #endif /* End portable versions. */
