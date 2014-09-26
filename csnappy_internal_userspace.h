@@ -34,6 +34,8 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 
 File modified for Sereal by
 Steffen Mueller <smueller@cpan.org>
+Yves Orton <demerphq@gmail.com>
+
 */
 
 #ifndef CSNAPPY_INTERNAL_USERSPACE_H_
