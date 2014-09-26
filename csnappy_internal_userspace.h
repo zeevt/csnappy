@@ -34,6 +34,8 @@ Zeev Tarantov <zeev.tarantov@gmail.com>
 
 File modified for Sereal by
 Steffen Mueller <smueller@cpan.org>
+Yves Orton <demerphq@gmail.com>
+
 */
 
 #ifndef CSNAPPY_INTERNAL_USERSPACE_H_
@@ -187,6 +189,22 @@ Albert Lee
 #define int32_t int
 #define int16_t short
 
+#define __SNAPPY_STRICT_ALIGN
+
+#elif defined(__s390x__) || defined(__zarch__) || defined(__SYSC_ZARCH__)
+
+#ifndef __BIG_ENDIAN
+#define __BIG_ENDIAN    87654321
+#endif
+#ifndef __LITTLE_ENDIAN
+#define __LITTLE_ENDIAN 12345678
+#endif
+#ifndef __BYTE_ORDER
+#define __BYTE_ORDER __BIG_ENDIAN
+#endif
+
+#define __SNAPPY_STRICT_ALIGN
+
 #endif
 
 #ifndef bswap_16
@@ -261,7 +279,7 @@ static INLINE void UNALIGNED_STORE64(void *p, uint64_t v)
 	ptr->x = v;
 }
 
-#elif defined(__hpux) /* strict architectures */
+#elif defined(__SNAPPY_STRICT_ALIGN) || defined(__sparc) || defined(__sparc__) /* strict architectures */
 
 /* For these platforms, there really are no unaligned loads/stores.
  * Read/write everything as uint8_t. Smart compilers might recognize
@@ -406,7 +424,7 @@ static INLINE void UNALIGNED_STORE64(void *p, uint64_t v)
  * supported (unsupported pragmas are ignored) but which do require
  * strict alignment, the below pragma pack trickery will fail.
  * Therefore this option is the last and the default, and the platforms
- * requiring strict alignment are detected earlier.
+ * requiring strict alignment are detected earlier. */
 
 #pragma pack(1)
 struct una_u16 { uint16_t x; };
