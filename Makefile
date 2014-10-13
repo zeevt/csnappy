@@ -8,6 +8,8 @@ else
 CFLAGS += $(OPT_FLAGS)
 endif
 LDFLAGS = -Wl,-O1 -Wl,--no-undefined
+PREFIX := /usr
+LIBDIR := $(PREFIX)/lib
 
 all: test
 
@@ -88,12 +90,14 @@ unaligned_test_android: unaligned_test.c unaligned_arm.s
 	-Wl,--no-undefined -Wl,-z,noexecstack -lc -lm -o unaligned_test_android
 
 install: csnappy.h libcsnappy.so
-	cp csnappy.h /usr/include/
-	cp libcsnappy.so /usr/lib/
+	install -d "$(DESTDIR)$(PREFIX)"/include
+	install -m 0644 csnappy.h "$(DESTDIR)$(PREFIX)"/include/
+	install -d "$(DESTDIR)$(LIBDIR)"
+	install libcsnappy.so "$(DESTDIR)$(LIBDIR)"
 
 uninstall:
-	rm -f /usr/include/csnappy.h
-	rm -f /usr/lib/libcsnappy.so
+	rm -f "$(DESTDIR)$(PREFIX)"/include/csnappy.h
+	rm -f "$(DESTDIR)$(LIBDIR)"/libcsnappy.so
 
 clean:
 	rm -f *.o *_debug libcsnappy.so cl_tester
