@@ -1,0 +1,3 @@
+cl_tester
+*.o
+*.so
