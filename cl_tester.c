@@ -171,6 +171,8 @@ int do_selftest_decompression(void)
 	FILE *ifile;
 	int ret;
 	long PAGE_SIZE = sysconf(_SC_PAGE_SIZE);
+	int hlen;
+	uint32_t n;
 	uint32_t ilen = PAGE_SIZE + 100;
 	uint32_t olen = csnappy_max_compressed_length(ilen);
 	if (!(obuf = (char*)malloc(olen)))
@@ -204,7 +206,12 @@ int do_selftest_decompression(void)
 		fprintf(stderr, "snappy_decompress returned %d.\n", ret);
 		exit(EXIT_FAILURE);
 	}
-	ret = csnappy_decompress_noheader(ibuf + 2, ilen - 2, obuf, &olen);
+	hlen = csnappy_get_uncompressed_length(ibuf, ilen, &n);
+	if (hlen == CSNAPPY_E_HEADER_BAD) {
+		fprintf(stderr, "csnappy_get_uncompressed_length, could not obtain header length\n");
+		exit(EXIT_FAILURE);
+	}
+	ret = csnappy_decompress_noheader(ibuf + hlen, ilen - hlen, obuf, &olen);
 	if (ret != CSNAPPY_E_OUTPUT_OVERRUN) {
 		fprintf(stderr, "csnappy_decompress_noheader returned %d.\n", ret);
 		exit(EXIT_FAILURE);
