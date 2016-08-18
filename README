@@ -1,4 +1,4 @@
-Google Snappy, available at http://code.google.com/p/snappy/
+Google Snappy, available at https://google.github.io/snappy/
 is a compression library designed for speed rather than compression ratios.
 
 It is not a new concept by far. The Linux kernel currently uses LZO as the
