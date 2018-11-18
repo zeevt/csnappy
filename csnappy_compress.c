@@ -86,7 +86,7 @@ encode_varint32(char *sptr, uint32_t v)
 #define kBlockSize (1 << kBlockLog)
 
 
-#if defined(__arm__) && !(ARCH_ARM_HAVE_UNALIGNED)
+#if defined(__arm__) && !defined(ARCH_ARM_HAVE_UNALIGNED)
 
 static uint8_t* emit_literal(
 	uint8_t *op,
