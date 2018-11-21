@@ -73,7 +73,7 @@ err_out:
 EXPORT_SYMBOL(csnappy_get_uncompressed_length);
 #endif
 
-#if defined(__arm__) && !(ARCH_ARM_HAVE_UNALIGNED)
+#if defined(__arm__) && !defined(ARCH_ARM_HAVE_UNALIGNED)
 int csnappy_decompress_noheader(
 	const char	*src_,
 	uint32_t	src_remaining,
