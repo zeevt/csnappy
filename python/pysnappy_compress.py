@@ -1,6 +1,5 @@
 import os, sys
 from struct import pack as struct_pack
-from struct import unpack as struct_unpack
 from array import array
 from collections import defaultdict
 
