@@ -249,7 +249,7 @@ static INLINE uint32_t Hash(const char *p, int shift)
  * Separate implementation for x86_64, for speed.  Uses the fact that
  * x86_64 is little endian.
  */
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
 static INLINE int
 FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 {
@@ -293,7 +293,7 @@ FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 	}
 	return matched;
 }
-#else /* !defined(__x86_64__) */
+#else /* !defined(__x86_64__) && !defined(__aarch64__) */
 static INLINE int
 FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 {
@@ -326,7 +326,7 @@ FindMatchLength(const char *s1, const char *s2, const char *s2_limit)
 #endif
 	return matched;
 }
-#endif /* !defined(__x86_64__) */
+#endif /* !defined(__x86_64__) && !defined(__aarch64__) */
 
 
 static INLINE char*
