@@ -93,7 +93,7 @@ Steffen Mueller <smueller@cpan.org>
 
 
 static INLINE void UnalignedCopy64(const void *src, void *dst) {
-#if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__) || defined(ARCH_ARM_HAVE_UNALIGNED)
+#if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__) || defined(ARCH_ARM_HAVE_UNALIGNED) || defined(__aarch64__)
   if ((sizeof(void *) == 8) || (sizeof(long) == 8)) {
     UNALIGNED_STORE64(dst, UNALIGNED_LOAD64(src));
   } else {
