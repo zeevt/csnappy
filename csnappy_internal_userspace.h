@@ -71,7 +71,13 @@ typedef __int32 int32_t; /* Sereal specific change, see csnappy_decompress.c(271
 #endif
 
 #else
-#include <stdint.h>
+
+#if defined(__SUNPRO_C) || defined(_AIX)
+# include <inttypes.h>
+#else
+# include <stdint.h>
+#endif
+
 #endif
 
 #ifdef _GNU_SOURCE
@@ -117,6 +123,13 @@ Albert Lee
 #define __LITTLE_ENDIAN	1234
 #define __BYTE_ORDER	LITTLE_ENDIAN
 
+#elif defined(_AIX)
+
+#include <sys/machine.h>
+#define __LITTLE_ENDIAN LITTLE_ENDIAN
+#define __BIG_ENDIAN BIG_ENDIAN
+#define __BYTE_ORDER __BIG_ENDIAN
+
 #elif defined(__APPLE__)
 
 #include <machine/endian.h>
@@ -154,10 +167,6 @@ Albert Lee
 #define __LITTLE_ENDIAN LITTLE_ENDIAN
 #define __BIG_ENDIAN BIG_ENDIAN
 
-#elif defined(__GNUC__) || defined(__ANDROID__) || defined(__CYGWIN__)
-
-#include <endian.h>
-#include <byteswap.h>
 
 #elif defined(__sun)
 
@@ -204,6 +213,11 @@ Albert Lee
 #endif
 
 #define __SNAPPY_STRICT_ALIGN
+
+#elif defined(__GNUC__) || defined(__ANDROID__) || defined(__CYGWIN__)
+
+#include <endian.h>
+#include <byteswap.h>
 
 #endif
 
