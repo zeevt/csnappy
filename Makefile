@@ -13,7 +13,7 @@ LIBDIR := $(PREFIX)/lib
 
 all: test
 
-test: cl_test check_leaks
+test: check_unaligned_uint64 cl_test check_leaks
 
 cl_tester: cl_tester.c csnappy.h libcsnappy.so
 	$(CC) $(CFLAGS) $(LDFLAGS) -D_GNU_SOURCE -o $@ $< libcsnappy.so
@@ -34,10 +34,30 @@ check_leaks: cl_tester
 	LD_LIBRARY_PATH=. valgrind --leak-check=full --show-reachable=yes ./cl_tester -c <testdata/urls.10K >/dev/null
 	LD_LIBRARY_PATH=. valgrind --leak-check=full --show-reachable=yes ./cl_tester -S d
 
+check_unaligned_uint64:
+	gzip -dc <testdata/unaligned_uint64_test.snappy.gz >testdata/unaligned_uint64_test.snappy
+	gzip -dc <testdata/unaligned_uint64_test.bin.gz >testdata/unaligned_uint64_test.bin
+	EXTRA_TEST_CFLAGS="-O0" make check_unaligned_uint64_extra_cflags
+	EXTRA_TEST_CFLAGS="-O1" make check_unaligned_uint64_extra_cflags
+	EXTRA_TEST_CFLAGS="-O2" make check_unaligned_uint64_extra_cflags
+	EXTRA_TEST_CFLAGS="-O3" make check_unaligned_uint64_extra_cflags
+	EXTRA_TEST_CFLAGS="-O2 -march=native" make check_unaligned_uint64_extra_cflags
+	EXTRA_TEST_CFLAGS="-O3 -march=native" make check_unaligned_uint64_extra_cflags
+	rm -f testdata/unaligned_uint64_test.snappy testdata/unaligned_uint64_test.bin
+
+check_unaligned_uint64_extra_cflags:
+	make clean
+	make cl_tester
+	rm -f tmp
+	LD_LIBRARY_PATH=. ./cl_tester -d testdata/unaligned_uint64_test.snappy tmp
+	diff testdata/unaligned_uint64_test.bin tmp >/dev/null && echo "${EXTRA_TEST_CFLAGS} ok"
+	make clean
+	rm -f tmp
+
 libcsnappy.so: csnappy_compress.c csnappy_decompress.c csnappy_internal.h csnappy_internal_userspace.h
-	$(CC) $(CFLAGS) -fPIC -DPIC -c -o csnappy_compress.o csnappy_compress.c
-	$(CC) $(CFLAGS) -fPIC -DPIC -c -o csnappy_decompress.o csnappy_decompress.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -shared -o $@ csnappy_compress.o csnappy_decompress.o
+	$(CC) $(CFLAGS) $(EXTRA_TEST_CFLAGS) -fPIC -DPIC -c -o csnappy_compress.o csnappy_compress.c
+	$(CC) $(CFLAGS) $(EXTRA_TEST_CFLAGS) -fPIC -DPIC -c -o csnappy_decompress.o csnappy_decompress.c
+	$(CC) $(CFLAGS) $(EXTRA_TEST_CFLAGS) $(LDFLAGS) -shared -o $@ csnappy_compress.o csnappy_decompress.o
 
 block_compressor: block_compressor.c libcsnappy.so
 	$(CC) -std=gnu99 -Wall -O2 -g -o $@ $< libcsnappy.so -llzo2 -lz -lrt
