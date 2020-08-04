@@ -58,7 +58,7 @@ class OutputBuffer(object):
     begin = (self.top_page_index << 12) + self.top_offset - distance_back
     if begin < 0:
       raise ValueError("distance back is too big. pos [%d %d], distance: %d" % \
-                               (self.top_page_index, self.top_offset, distance))
+                               (self.top_page_index, self.top_offset, distance_back))
     input_page_index, input_offset = begin >> 12, begin & 4095
     while True:
       input_page, output_page = self.pages[input_page_index], self.pages[self.top_page_index]
