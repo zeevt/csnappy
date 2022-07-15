@@ -34,24 +34,33 @@ check_leaks: cl_tester
 	LD_LIBRARY_PATH=. valgrind --leak-check=full --show-reachable=yes ./cl_tester -c <testdata/urls.10K >/dev/null
 	LD_LIBRARY_PATH=. valgrind --leak-check=full --show-reachable=yes ./cl_tester -S d
 
-check_unaligned_uint64:
+check_unaligned_uint64: cl_tester
 	gzip -dc <testdata/unaligned_uint64_test.snappy.gz >testdata/unaligned_uint64_test.snappy
 	gzip -dc <testdata/unaligned_uint64_test.bin.gz >testdata/unaligned_uint64_test.bin
-	EXTRA_TEST_CFLAGS="-O0" make check_unaligned_uint64_extra_cflags
-	EXTRA_TEST_CFLAGS="-O1" make check_unaligned_uint64_extra_cflags
-	EXTRA_TEST_CFLAGS="-O2" make check_unaligned_uint64_extra_cflags
-	EXTRA_TEST_CFLAGS="-O3" make check_unaligned_uint64_extra_cflags
-	EXTRA_TEST_CFLAGS="-O2 -march=native" make check_unaligned_uint64_extra_cflags
-	EXTRA_TEST_CFLAGS="-O3 -march=native" make check_unaligned_uint64_extra_cflags
+	rm -f tmp
+	LD_LIBRARY_PATH=. ./cl_tester -d testdata/unaligned_uint64_test.snappy tmp
+	diff testdata/unaligned_uint64_test.bin tmp >/dev/null && echo "Unaligned test is ok"
+	rm -f tmp
+	rm -f testdata/unaligned_uint64_test.snappy testdata/unaligned_uint64_test.bin
+
+test_extra_cflags:
+	gzip -dc <testdata/unaligned_uint64_test.snappy.gz >testdata/unaligned_uint64_test.snappy
+	gzip -dc <testdata/unaligned_uint64_test.bin.gz >testdata/unaligned_uint64_test.bin
+	EXTRA_TEST_CFLAGS="-O0" $(MAKE) check_unaligned_uint64_extra_cflags
+	EXTRA_TEST_CFLAGS="-O1" $(MAKE) check_unaligned_uint64_extra_cflags
+	EXTRA_TEST_CFLAGS="-O2" $(MAKE) check_unaligned_uint64_extra_cflags
+	EXTRA_TEST_CFLAGS="-O3" $(MAKE) check_unaligned_uint64_extra_cflags
+	EXTRA_TEST_CFLAGS="-O2 -march=native" $(MAKE) check_unaligned_uint64_extra_cflags
+	EXTRA_TEST_CFLAGS="-O3 -march=native" $(MAKE) check_unaligned_uint64_extra_cflags
 	rm -f testdata/unaligned_uint64_test.snappy testdata/unaligned_uint64_test.bin
 
 check_unaligned_uint64_extra_cflags:
-	make clean
-	make cl_tester
+	$(MAKE) clean
+	$(MAKE) cl_tester
 	rm -f tmp
 	LD_LIBRARY_PATH=. ./cl_tester -d testdata/unaligned_uint64_test.snappy tmp
 	diff testdata/unaligned_uint64_test.bin tmp >/dev/null && echo "${EXTRA_TEST_CFLAGS} ok"
-	make clean
+	$(MAKE) clean
 	rm -f tmp
 
 libcsnappy.so: csnappy_compress.c csnappy_decompress.c csnappy_internal.h csnappy_internal_userspace.h
